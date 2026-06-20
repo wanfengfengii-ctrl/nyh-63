@@ -31,6 +31,7 @@
                     <li><a href="{% url 'formulas:risk_alerts' %}">风险预警</a></li>
                     <li><a href="{% url 'formulas:annotation_list' %}">学术注释</a></li>
                     <li><a href="{% url 'formulas:dispute_list' %}">争议考证</a></li>
+                    <li><a href="{% url 'formulas:topic_list' %}">研究专题</a></li>
                     {% if user.is_authenticated and perms.formulas.view_operationlog %}
                         <li><a href="{% url 'formulas:operation_logs' %}">操作日志</a></li>
                     {% endif %}
@@ -38,6 +39,7 @@
                         <li class="nav-divider"></li>
                         <li><a href="{% url 'formulas:formula_create' %}">新建配方</a></li>
                         <li><a href="{% url 'formulas:literature_create' %}">添加文献</a></li>
+                        <li><a href="{% url 'formulas:topic_create' %}">新建专题</a></li>
                         <li><a href="/admin/">管理后台</a></li>
                         <li class="user-info">
                             <span class="role-chip role-{{ user.profile.role|default:'guest' }}">

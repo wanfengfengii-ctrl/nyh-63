@@ -36,4 +36,11 @@ urlpatterns = [
     path('disputes/<int:pk>/', views.dispute_detail, name='dispute_detail'),
     path('disputes/create/', views.dispute_create, name='dispute_create'),
     path('disputes/<int:pk>/delete/', views.dispute_delete, name='dispute_delete'),
+
+    path('topics/', views.topic_list, name='topic_list'),
+    path('topics/<int:pk>/', views.topic_detail, name='topic_detail'),
+    path('topics/create/', views.topic_create, name='topic_create'),
+    path('topics/<int:pk>/edit/', views.topic_edit, name='topic_edit'),
+    path('topics/<int:pk>/delete/', views.topic_delete, name='topic_delete'),
+    path('topics/<int:pk>/export/', views.topic_export, name='topic_export'),
 ]

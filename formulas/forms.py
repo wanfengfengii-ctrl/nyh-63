@@ -6,6 +6,7 @@ from .models import (
     OperationLog, FormulaVersion,
     AcademicAnnotation, AnnotationEditHistory,
     Dispute, DisputeArgument, DisputeProgress,
+    ResearchTopic, TopicKeyword, TopicReference, TopicEntry, TopicNote,
 )
 
 
@@ -375,6 +376,7 @@ class DataExportForm(forms.Form):
         ('ingredients', '成分统计数据'),
         ('reviews', '评审记录'),
         ('operation_logs', '操作日志(仅管理员/审计员)'),
+        ('topics', '研究专题数据'),
     ]
 
     export_target = forms.ChoiceField(
@@ -593,4 +595,138 @@ class DisputeConclusionForm(forms.ModelForm):
         widgets = {
             'status': forms.Select(attrs={'class': 'form-control'}),
             'conclusion': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': '填写争议结论'}),
+        }
+
+
+class ResearchTopicForm(forms.ModelForm):
+    keywords_str = forms.CharField(
+        required=False,
+        label='关键词',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': '多个关键词用逗号分隔，如：宋代,火药,军事',
+        }),
+    )
+
+    class Meta:
+        model = ResearchTopic
+        fields = [
+            'title', 'description', 'category', 'status', 'leader',
+            'research_note', 'stage_conclusion', 'started_at', 'completed_at',
+        ]
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '专题名称'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': '详细描述专题研究目标和范围'}),
+            'category': forms.Select(attrs={'class': 'form-control'}),
+            'status': forms.Select(attrs={'class': 'form-control'}),
+            'leader': forms.Select(attrs={'class': 'form-control'}),
+            'research_note': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': '研究说明、背景和方法论'}),
+            'stage_conclusion': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': '当前阶段的阶段性结论'}),
+            'started_at': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'completed_at': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            kws = self.instance.keywords.all().values_list('keyword', flat=True)
+            self.initial['keywords_str'] = '，'.join(kws)
+
+    def save(self, commit=True):
+        topic = super().save(commit=commit)
+        if commit:
+            self._save_keywords(topic)
+        return topic
+
+    def _save_keywords(self, topic):
+        keywords_str = self.cleaned_data.get('keywords_str', '')
+        topic.keywords.all().delete()
+        if keywords_str:
+            separators = ['，', ',', '、', ';', '；']
+            parts = [keywords_str]
+            for sep in separators:
+                new_parts = []
+                for p in parts:
+                    new_parts.extend(p.split(sep))
+                parts = new_parts
+            for kw in parts:
+                kw = kw.strip()
+                if kw:
+                    TopicKeyword.objects.get_or_create(topic=topic, keyword=kw)
+
+
+class TopicFilterForm(forms.Form):
+    CATEGORY_CHOICES = [('', '全部类别')] + list(ResearchTopic._meta.get_field('category').choices)
+    STATUS_CHOICES = [('', '全部状态')] + list(ResearchTopic._meta.get_field('status').choices)
+
+    category = forms.ChoiceField(
+        choices=CATEGORY_CHOICES,
+        required=False,
+        label='主题类别',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+    status = forms.ChoiceField(
+        choices=STATUS_CHOICES,
+        required=False,
+        label='研究状态',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+    leader = forms.CharField(
+        required=False,
+        label='专题负责人',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '负责人用户名'}),
+    )
+    keyword = forms.CharField(
+        required=False,
+        label='关键词',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '搜索专题名称、描述或关键词'}),
+    )
+    date_from = forms.DateField(
+        required=False,
+        label='创建起始日期',
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+    )
+    date_to = forms.DateField(
+        required=False,
+        label='创建结束日期',
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+    )
+
+
+class TopicEntryForm(forms.ModelForm):
+    class Meta:
+        model = TopicEntry
+        fields = ['content_type', 'formula', 'literature', 'annotation', 'dispute', 'review', 'note']
+        widgets = {
+            'content_type': forms.Select(attrs={'class': 'form-control', 'id': 'id_entry_content_type'}),
+            'formula': forms.Select(attrs={'class': 'form-control'}),
+            'literature': forms.Select(attrs={'class': 'form-control'}),
+            'annotation': forms.Select(attrs={'class': 'form-control'}),
+            'dispute': forms.Select(attrs={'class': 'form-control'}),
+            'review': forms.Select(attrs={'class': 'form-control'}),
+            'note': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': '归集说明，如为什么将此条目纳入本专题'}),
+        }
+
+
+class TopicNoteForm(forms.ModelForm):
+    class Meta:
+        model = TopicNote
+        fields = ['note_type', 'title', 'content']
+        widgets = {
+            'note_type': forms.Select(attrs={'class': 'form-control'}),
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '笔记标题'}),
+            'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 5, 'placeholder': '详细内容'}),
+        }
+
+
+class TopicReferenceForm(forms.ModelForm):
+    class Meta:
+        model = TopicReference
+        fields = ['title', 'author', 'source', 'url', 'note']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '参考资料标题'}),
+            'author': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '作者'}),
+            'source': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '出版来源或出处'}),
+            'url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://...'}),
+            'note': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': '备注'}),
         }

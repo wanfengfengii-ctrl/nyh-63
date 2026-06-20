@@ -7,6 +7,7 @@ from .models import (
     LiteratureAttachment, RiskAlert, ReviewFlow,
     AcademicAnnotation, AnnotationEditHistory,
     Dispute, DisputeArgument, DisputeProgress,
+    ResearchTopic, TopicKeyword, TopicReference, TopicEntry, TopicNote,
 )
 
 
@@ -299,3 +300,77 @@ class DisputeProgressAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+class TopicKeywordInline(admin.TabularInline):
+    model = TopicKeyword
+    extra = 2
+    fields = ['keyword']
+
+
+class TopicEntryInline(admin.TabularInline):
+    model = TopicEntry
+    extra = 1
+    fields = ['content_type', 'formula', 'literature', 'annotation', 'dispute', 'review', 'note']
+    readonly_fields = ['added_by', 'added_at']
+
+
+class TopicNoteInline(admin.TabularInline):
+    model = TopicNote
+    extra = 0
+    fields = ['note_type', 'title', 'content', 'created_by']
+    readonly_fields = ['created_by', 'created_at']
+
+
+class TopicReferenceInline(admin.TabularInline):
+    model = TopicReference
+    extra = 0
+    fields = ['title', 'author', 'source', 'url', 'note']
+    readonly_fields = ['added_by', 'added_at']
+
+
+@admin.register(ResearchTopic)
+class ResearchTopicAdmin(admin.ModelAdmin):
+    list_display = ['title', 'category', 'status', 'leader', 'created_by', 'created_at']
+    list_filter = ['category', 'status', 'created_at']
+    search_fields = ['title', 'description', 'research_note']
+    readonly_fields = ['created_at', 'updated_at']
+    inlines = [TopicKeywordInline, TopicEntryInline, TopicNoteInline, TopicReferenceInline]
+    fieldsets = [
+        ('基本信息', {
+            'fields': ['title', 'description', 'category', 'status', 'leader']
+        }),
+        ('研究内容', {
+            'fields': ['research_note', 'stage_conclusion']
+        }),
+        ('时间信息', {
+            'fields': ['started_at', 'completed_at', 'created_by', 'created_at', 'updated_at'],
+            'classes': ['collapse']
+        }),
+    ]
+
+
+@admin.register(TopicKeyword)
+class TopicKeywordAdmin(admin.ModelAdmin):
+    list_display = ['topic', 'keyword']
+    search_fields = ['topic__title', 'keyword']
+
+
+@admin.register(TopicEntry)
+class TopicEntryAdmin(admin.ModelAdmin):
+    list_display = ['topic', 'content_type', 'formula', 'literature', 'annotation', 'dispute', 'review', 'added_by', 'added_at']
+    list_filter = ['content_type', 'added_at']
+    search_fields = ['topic__title', 'note']
+
+
+@admin.register(TopicNote)
+class TopicNoteAdmin(admin.ModelAdmin):
+    list_display = ['topic', 'note_type', 'title', 'created_by', 'created_at']
+    list_filter = ['note_type', 'created_at']
+    search_fields = ['topic__title', 'title', 'content']
+
+
+@admin.register(TopicReference)
+class TopicReferenceAdmin(admin.ModelAdmin):
+    list_display = ['topic', 'title', 'author', 'source', 'added_by', 'added_at']
+    search_fields = ['topic__title', 'title', 'author']

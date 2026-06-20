@@ -62,6 +62,10 @@
         <div class="stat-value" style="color:#e53935;">{{ open_alerts_count }}</div>
         <div class="stat-label">未处理预警</div>
     </a>
+    <a href="{% url 'formulas:topic_list' %}" class="stat-card" style="text-decoration:none; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+        <div class="stat-value" style="color:#8b6914;">{{ total_topics }}</div>
+        <div class="stat-label">研究专题</div>
+    </a>
 </div>
 
 <div class="two-col">
@@ -218,6 +222,10 @@
             <a href="{% url 'formulas:risk_alerts' %}" class="stat-card" style="text-decoration:none; text-align:center; padding:16px 10px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
                 <div style="font-size:28px; margin-bottom:6px;">🚨</div>
                 <div style="font-size:13px; color:#4a3728; font-weight:500;">风险预警</div>
+            </a>
+            <a href="{% url 'formulas:topic_list' %}" class="stat-card" style="text-decoration:none; text-align:center; padding:16px 10px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+                <div style="font-size:28px; margin-bottom:6px;">🗂️</div>
+                <div style="font-size:13px; color:#4a3728; font-weight:500;">研究专题</div>
             </a>
             <a href="{% url 'formulas:data_export' %}" class="stat-card" style="text-decoration:none; text-align:center; padding:16px 10px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
                 <div style="font-size:28px; margin-bottom:6px;">📤</div>

@@ -1,0 +1,82 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}{{ title }} - 研究专题{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+    <a href="{% url 'formulas:topic_list' %}" style="font-size:13px; color:#6b4423;">← 返回专题列表</a>
+    <h2 style="color:#4a3728; margin:8px 0 0;">{{ title }}</h2>
+</div>
+
+<div class="detail-card" style="padding:24px;">
+    <form method="post">
+        {% csrf_token %}
+
+        <div style="margin-bottom:16px;">
+            <label style="font-size:14px; font-weight:600; color:#4a3728; margin-bottom:6px; display:block;">专题名称</label>
+            {{ form.title }}
+            {% if form.title.errors %}
+            <div style="color:#b33a3a; font-size:12px; margin-top:4px;">{{ form.title.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <label style="font-size:14px; font-weight:600; color:#4a3728; margin-bottom:6px; display:block;">专题描述</label>
+            {{ form.description }}
+            {% if form.description.errors %}
+            <div style="color:#b33a3a; font-size:12px; margin-top:4px;">{{ form.description.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+            <div>
+                <label style="font-size:14px; font-weight:600; color:#4a3728; margin-bottom:6px; display:block;">主题类别</label>
+                {{ form.category }}
+            </div>
+            <div>
+                <label style="font-size:14px; font-weight:600; color:#4a3728; margin-bottom:6px; display:block;">研究状态</label>
+                {{ form.status }}
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
+            <div>
+                <label style="font-size:14px; font-weight:600; color:#4a3728; margin-bottom:6px; display:block;">专题负责人</label>
+                {{ form.leader }}
+            </div>
+            <div>
+                <label style="font-size:14px; font-weight:600; color:#4a3728; margin-bottom:6px; display:block;">研究开始日期</label>
+                {{ form.started_at }}
+            </div>
+            <div>
+                <label style="font-size:14px; font-weight:600; color:#4a3728; margin-bottom:6px; display:block;">研究完成日期</label>
+                {{ form.completed_at }}
+            </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <label style="font-size:14px; font-weight:600; color:#4a3728; margin-bottom:6px; display:block;">关键词</label>
+            {{ form.keywords_str }}
+            <div style="font-size:12px; color:#9a8b75; margin-top:4px;">多个关键词用逗号分隔</div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <label style="font-size:14px; font-weight:600; color:#4a3728; margin-bottom:6px; display:block;">研究说明</label>
+            {{ form.research_note }}
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <label style="font-size:14px; font-weight:600; color:#4a3728; margin-bottom:6px; display:block;">阶段结论</label>
+            {{ form.stage_conclusion }}
+        </div>
+
+        <div style="display:flex; gap:12px; margin-top:20px;">
+            <button type="submit" class="btn btn-primary">保存</button>
+            <a href="{% url 'formulas:topic_list' %}" class="btn" style="background:#e8dfc8; color:#4a3728;">取消</a>
+            {% if topic and topic.pk %}
+            <a href="{% url 'formulas:topic_delete' topic.pk %}" class="btn" style="background:#fde2e2; color:#a12828;" onclick="return confirm('确认删除此专题？此操作不可恢复。')">删除专题</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+{% endblock %}

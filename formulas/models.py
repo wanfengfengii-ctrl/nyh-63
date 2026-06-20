@@ -804,6 +804,296 @@ class DisputeProgress(models.Model):
         return f'{self.dispute.title} - {self.get_new_status_display()}'
 
 
+TOPIC_CATEGORY_CHOICES = [
+    ('dynasty', '特定朝代'),
+    ('region', '地区'),
+    ('ingredient', '成分'),
+    ('usage', '用途'),
+    ('literature_system', '文献体系'),
+    ('other', '其他'),
+]
+
+TOPIC_STATUS_CHOICES = [
+    ('planning', '规划中'),
+    ('in_progress', '研究中'),
+    ('completed', '已完成'),
+    ('published', '已发布'),
+]
+
+TOPIC_ENTRY_TYPE_CHOICES = [
+    ('formula', '配方'),
+    ('literature', '文献'),
+    ('annotation', '注释'),
+    ('dispute', '争议'),
+    ('review', '评审'),
+]
+
+TOPIC_NOTE_TYPE_CHOICES = [
+    ('research_note', '研究说明'),
+    ('conclusion', '阶段结论'),
+    ('finding', '研究发现'),
+    ('question', '待解问题'),
+]
+
+
+class ResearchTopic(models.Model):
+    title = models.CharField('专题名称', max_length=300)
+    description = models.TextField('专题描述', blank=True)
+    category = models.CharField(
+        '主题类别',
+        max_length=30,
+        choices=TOPIC_CATEGORY_CHOICES,
+        default='other',
+    )
+    status = models.CharField(
+        '研究状态',
+        max_length=20,
+        choices=TOPIC_STATUS_CHOICES,
+        default='planning',
+    )
+    leader = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='专题负责人',
+        related_name='led_topics',
+    )
+    research_note = models.TextField('研究说明', blank=True)
+    stage_conclusion = models.TextField('阶段结论', blank=True)
+    started_at = models.DateField('研究开始日期', null=True, blank=True)
+    completed_at = models.DateField('研究完成日期', null=True, blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='创建人',
+        related_name='created_topics',
+    )
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        verbose_name = '研究专题'
+        verbose_name_plural = '研究专题'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['category', 'status']),
+            models.Index(fields=['leader', 'status']),
+        ]
+
+    def __str__(self):
+        return f'[{self.get_category_display()}] {self.title}'
+
+    @property
+    def entry_count(self):
+        return self.entries.count()
+
+    @property
+    def formula_count(self):
+        return self.entries.filter(content_type='formula').count()
+
+    @property
+    def literature_count(self):
+        return self.entries.filter(content_type='literature').count()
+
+    @property
+    def annotation_count(self):
+        return self.entries.filter(content_type='annotation').count()
+
+    @property
+    def dispute_count(self):
+        return self.entries.filter(content_type='dispute').count()
+
+    @property
+    def review_count(self):
+        return self.entries.filter(content_type='review').count()
+
+
+class TopicKeyword(models.Model):
+    topic = models.ForeignKey(
+        ResearchTopic,
+        on_delete=models.CASCADE,
+        verbose_name='所属专题',
+        related_name='keywords',
+    )
+    keyword = models.CharField('关键词', max_length=100)
+
+    class Meta:
+        verbose_name = '专题关键词'
+        verbose_name_plural = '专题关键词'
+        unique_together = [['topic', 'keyword']]
+
+    def __str__(self):
+        return f'{self.topic.title} - {self.keyword}'
+
+
+class TopicReference(models.Model):
+    topic = models.ForeignKey(
+        ResearchTopic,
+        on_delete=models.CASCADE,
+        verbose_name='所属专题',
+        related_name='references',
+    )
+    title = models.CharField('参考资料标题', max_length=300)
+    author = models.CharField('作者', max_length=200, blank=True)
+    source = models.CharField('来源', max_length=300, blank=True)
+    url = models.URLField('链接', blank=True)
+    note = models.TextField('备注', blank=True)
+    added_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='添加人',
+    )
+    added_at = models.DateTimeField('添加时间', auto_now_add=True)
+
+    class Meta:
+        verbose_name = '专题参考资料'
+        verbose_name_plural = '专题参考资料'
+        ordering = ['-added_at']
+
+    def __str__(self):
+        return f'{self.topic.title} - {self.title}'
+
+
+class TopicEntry(models.Model):
+    topic = models.ForeignKey(
+        ResearchTopic,
+        on_delete=models.CASCADE,
+        verbose_name='所属专题',
+        related_name='entries',
+    )
+    content_type = models.CharField(
+        '条目类型',
+        max_length=20,
+        choices=TOPIC_ENTRY_TYPE_CHOICES,
+    )
+    formula = models.ForeignKey(
+        Formula,
+        on_delete=models.CASCADE,
+        verbose_name='关联配方',
+        related_name='topic_entries',
+        null=True,
+        blank=True,
+    )
+    literature = models.ForeignKey(
+        Literature,
+        on_delete=models.CASCADE,
+        verbose_name='关联文献',
+        related_name='topic_entries',
+        null=True,
+        blank=True,
+    )
+    annotation = models.ForeignKey(
+        AcademicAnnotation,
+        on_delete=models.CASCADE,
+        verbose_name='关联注释',
+        related_name='topic_entries',
+        null=True,
+        blank=True,
+    )
+    dispute = models.ForeignKey(
+        Dispute,
+        on_delete=models.CASCADE,
+        verbose_name='关联争议',
+        related_name='topic_entries',
+        null=True,
+        blank=True,
+    )
+    review = models.ForeignKey(
+        SafetyReview,
+        on_delete=models.CASCADE,
+        verbose_name='关联评审',
+        related_name='topic_entries',
+        null=True,
+        blank=True,
+    )
+    note = models.TextField('归集说明', blank=True)
+    added_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='添加人',
+    )
+    added_at = models.DateTimeField('添加时间', auto_now_add=True)
+
+    class Meta:
+        verbose_name = '专题条目'
+        verbose_name_plural = '专题条目'
+        ordering = ['-added_at']
+        indexes = [
+            models.Index(fields=['topic', 'content_type']),
+        ]
+
+    def __str__(self):
+        obj_name = ''
+        if self.content_type == 'formula' and self.formula:
+            obj_name = str(self.formula)
+        elif self.content_type == 'literature' and self.literature:
+            obj_name = self.literature.title
+        elif self.content_type == 'annotation' and self.annotation:
+            obj_name = self.annotation.title
+        elif self.content_type == 'dispute' and self.dispute:
+            obj_name = self.dispute.title
+        elif self.content_type == 'review' and self.review:
+            obj_name = str(self.review)
+        return f'{self.topic.title} - {self.get_content_type_display()}: {obj_name}'
+
+    def clean(self):
+        super().clean()
+        ct_field_map = {
+            'formula': self.formula,
+            'literature': self.literature,
+            'annotation': self.annotation,
+            'dispute': self.dispute,
+            'review': self.review,
+        }
+        selected = ct_field_map.get(self.content_type)
+        if not selected:
+            from django.core.exceptions import ValidationError
+            raise ValidationError(
+                {self.content_type: f'{self.get_content_type_display()}类型条目必须关联对应对象'}
+            )
+
+
+class TopicNote(models.Model):
+    topic = models.ForeignKey(
+        ResearchTopic,
+        on_delete=models.CASCADE,
+        verbose_name='所属专题',
+        related_name='notes',
+    )
+    note_type = models.CharField(
+        '笔记类型',
+        max_length=20,
+        choices=TOPIC_NOTE_TYPE_CHOICES,
+        default='research_note',
+    )
+    title = models.CharField('标题', max_length=300)
+    content = models.TextField('内容')
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='创建人',
+    )
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        verbose_name = '专题笔记'
+        verbose_name_plural = '专题笔记'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.topic.title} - {self.title}'
+
+
 class RiskAlert(models.Model):
     formula = models.ForeignKey(
         Formula,

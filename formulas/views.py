@@ -23,6 +23,7 @@ from .models import (
     LiteratureAttachment, RiskAlert, ReviewFlow,
     AcademicAnnotation, AnnotationEditHistory,
     Dispute, DisputeArgument, DisputeProgress,
+    ResearchTopic, TopicKeyword, TopicReference, TopicEntry, TopicNote,
 )
 from .forms import (
     FormulaForm, IngredientFormSet, LiteratureForm,
@@ -34,6 +35,8 @@ from .forms import (
     AnnotationEditForm,
     DisputeForm, DisputeArgumentForm, DisputeProgressForm,
     DisputeFilterForm, DisputeConclusionForm,
+    ResearchTopicForm, TopicFilterForm, TopicEntryForm,
+    TopicNoteForm, TopicReferenceForm,
 )
 from .signals import log_operation, check_review_overdue
 
@@ -129,6 +132,8 @@ def index(request):
     recent_alerts = RiskAlert.objects.select_related('formula').order_by('-created_at')[:5]
     recent_logs = OperationLog.objects.select_related('user').order_by('-created_at')[:8]
 
+    total_topics = ResearchTopic.objects.count()
+
     usage_stats = list(Formula.objects.values('usage_category').annotate(
         count=Count('id')
     ).order_by('-count'))
@@ -160,6 +165,7 @@ def index(request):
         'review_stats': review_stats,
         'user_role': user_role,
         'user_role_label': ROLE_LABELS.get(user_role, '访客'),
+        'total_topics': total_topics,
     }
     return render(request, 'formulas/index.html', context)
 
@@ -1032,6 +1038,27 @@ def _build_export_data(target, fmt, date_from, date_to, include_attachments):
             return _rows_to_csv(rows), f'operation_logs_{timestamp}'
         return json.dumps(rows, ensure_ascii=False, indent=2), f'operation_logs_{timestamp}'
 
+    elif target == 'topics':
+        rows = []
+        topics = ResearchTopic.objects.filter(q_filter).select_related('leader', 'created_by')
+        for t in topics:
+            kws = '，'.join(t.keywords.all().values_list('keyword', flat=True))
+            rows.append({
+                '专题名称': t.title,
+                '主题类别': t.get_category_display(),
+                '研究状态': t.get_status_display(),
+                '负责人': str(t.leader) if t.leader else '',
+                '关键词': kws,
+                '归集条目数': t.entry_count,
+                '研究笔记数': t.notes.count(),
+                '参考资料数': t.references.count(),
+                '创建人': str(t.created_by) if t.created_by else '',
+                '创建时间': t.created_at.strftime('%Y-%m-%d %H:%M'),
+            })
+        if fmt == 'csv':
+            return _rows_to_csv(rows), f'topics_{timestamp}'
+        return json.dumps(rows, ensure_ascii=False, indent=2), f'topics_{timestamp}'
+
     return '', f'export_{timestamp}'
 
 
@@ -1414,3 +1441,383 @@ def dispute_delete(request, pk):
     dispute.delete()
     messages.success(request, '争议条目已删除')
     return redirect('formulas:dispute_list')
+
+
+def topic_list(request):
+    form = TopicFilterForm(request.GET or None)
+    queryset = ResearchTopic.objects.select_related(
+        'leader', 'created_by',
+    ).prefetch_related('keywords').all()
+
+    if form.is_valid():
+        cd = form.cleaned_data
+        category = cd.get('category')
+        status = cd.get('status')
+        leader = cd.get('leader')
+        keyword = cd.get('keyword')
+        date_from = cd.get('date_from')
+        date_to = cd.get('date_to')
+        if category:
+            queryset = queryset.filter(category=category)
+        if status:
+            queryset = queryset.filter(status=status)
+        if leader:
+            queryset = queryset.filter(leader__username__icontains=leader)
+        if keyword:
+            kw_q = Q(title__icontains=keyword) | Q(description__icontains=keyword)
+            topic_ids_with_kw = TopicKeyword.objects.filter(
+                keyword__icontains=keyword
+            ).values_list('topic_id', flat=True)
+            kw_q |= Q(pk__in=topic_ids_with_kw)
+            queryset = queryset.filter(kw_q)
+        if date_from:
+            queryset = queryset.filter(created_at__date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(created_at__date__lte=date_to)
+
+    log_operation(request.user, 'view', target_model='ResearchTopic',
+                  target_name='研究专题列表', description='浏览研究专题列表', request=request)
+
+    context = {
+        'form': form,
+        'topics': queryset,
+        'user_role': get_user_role(request.user) if request.user.is_authenticated else 'guest',
+        'can_create': has_perm(request.user, 'create'),
+    }
+    return render(request, 'formulas/topic_list.html', context)
+
+
+def topic_detail(request, pk):
+    topic = get_object_or_404(ResearchTopic, pk=pk)
+    entries = topic.entries.all().select_related(
+        'formula', 'literature', 'annotation', 'dispute', 'review', 'added_by',
+    )
+    notes = topic.notes.all().select_related('created_by')
+    references = topic.references.all().select_related('added_by')
+    keywords = topic.keywords.all()
+
+    formula_entries = entries.filter(content_type='formula')
+    literature_entries = entries.filter(content_type='literature')
+    annotation_entries = entries.filter(content_type='annotation')
+    dispute_entries = entries.filter(content_type='dispute')
+    review_entries = entries.filter(content_type='review')
+
+    entry_type_stats = {
+        'formula': formula_entries.count(),
+        'literature': literature_entries.count(),
+        'annotation': annotation_entries.count(),
+        'dispute': dispute_entries.count(),
+        'review': review_entries.count(),
+    }
+
+    timeline_events = []
+    for e in entries:
+        timeline_events.append({
+            'date': e.added_at,
+            'type': 'entry',
+            'label': f'归集{e.get_content_type_display()}',
+            'detail': str(e),
+        })
+    for n in notes:
+        timeline_events.append({
+            'date': n.created_at,
+            'type': 'note',
+            'label': n.get_note_type_display(),
+            'detail': n.title,
+        })
+    timeline_events.sort(key=lambda x: x['date'], reverse=True)
+
+    formula_ids = formula_entries.values_list('formula_id', flat=True)
+    shared_formulas = {}
+    if formula_ids:
+        other_entries = TopicEntry.objects.filter(
+            content_type='formula', formula_id__in=formula_ids
+        ).exclude(topic=topic).select_related('topic')
+        for oe in other_entries:
+            shared_formulas.setdefault(oe.formula_id, []).append(oe.topic)
+
+    entry_form = None
+    note_form = None
+    reference_form = None
+    can_edit = has_perm(request.user, 'update')
+
+    if can_edit and request.user.is_authenticated:
+        entry_form = TopicEntryForm()
+        note_form = TopicNoteForm()
+        reference_form = TopicReferenceForm()
+
+    if request.method == 'POST' and can_edit:
+        action = request.POST.get('action', '')
+
+        if action == 'add_entry':
+            entry_form = TopicEntryForm(request.POST)
+            if entry_form.is_valid():
+                entry = entry_form.save(commit=False)
+                entry.topic = topic
+                entry.added_by = request.user
+                entry.save()
+                log_operation(request.user, 'create', target_model='TopicEntry',
+                              target_id=entry.pk, target_name=str(entry),
+                              description=f'向专题归集条目：{entry}', request=request)
+                messages.success(request, '条目已归集到专题')
+                return redirect('formulas:topic_detail', pk=pk)
+
+        elif action == 'add_note':
+            note_form = TopicNoteForm(request.POST)
+            if note_form.is_valid():
+                note = note_form.save(commit=False)
+                note.topic = topic
+                note.created_by = request.user
+                note.save()
+                log_operation(request.user, 'create', target_model='TopicNote',
+                              target_id=note.pk, target_name=note.title,
+                              description=f'添加专题笔记：{note.title}', request=request)
+                messages.success(request, '研究笔记已添加')
+                return redirect('formulas:topic_detail', pk=pk)
+
+        elif action == 'add_reference':
+            reference_form = TopicReferenceForm(request.POST)
+            if reference_form.is_valid():
+                ref = reference_form.save(commit=False)
+                ref.topic = topic
+                ref.added_by = request.user
+                ref.save()
+                log_operation(request.user, 'create', target_model='TopicReference',
+                              target_id=ref.pk, target_name=ref.title,
+                              description=f'添加参考资料：{ref.title}', request=request)
+                messages.success(request, '参考资料已添加')
+                return redirect('formulas:topic_detail', pk=pk)
+
+        elif action == 'remove_entry':
+            entry_id = request.POST.get('entry_id')
+            entry = get_object_or_404(TopicEntry, pk=entry_id, topic=topic)
+            log_operation(request.user, 'delete', target_model='TopicEntry',
+                          target_id=entry.pk, target_name=str(entry),
+                          description=f'从专题移除条目：{entry}', request=request)
+            entry.delete()
+            messages.success(request, '条目已从专题移除')
+            return redirect('formulas:topic_detail', pk=pk)
+
+        elif action == 'delete_note':
+            note_id = request.POST.get('note_id')
+            note = get_object_or_404(TopicNote, pk=note_id, topic=topic)
+            log_operation(request.user, 'delete', target_model='TopicNote',
+                          target_id=note.pk, target_name=note.title,
+                          description=f'删除专题笔记：{note.title}', request=request)
+            note.delete()
+            messages.success(request, '笔记已删除')
+            return redirect('formulas:topic_detail', pk=pk)
+
+        elif action == 'delete_reference':
+            ref_id = request.POST.get('ref_id')
+            ref = get_object_or_404(TopicReference, pk=ref_id, topic=topic)
+            log_operation(request.user, 'delete', target_model='TopicReference',
+                          target_id=ref.pk, target_name=ref.title,
+                          description=f'删除参考资料：{ref.title}', request=request)
+            ref.delete()
+            messages.success(request, '参考资料已删除')
+            return redirect('formulas:topic_detail', pk=pk)
+
+    log_operation(request.user, 'view', target_model='ResearchTopic',
+                  target_id=topic.pk, target_name=topic.title,
+                  description=f'查看研究专题：{topic.title}', request=request)
+
+    context = {
+        'topic': topic,
+        'entries': entries,
+        'formula_entries': formula_entries,
+        'literature_entries': literature_entries,
+        'annotation_entries': annotation_entries,
+        'dispute_entries': dispute_entries,
+        'review_entries': review_entries,
+        'notes': notes,
+        'references': references,
+        'keywords': keywords,
+        'entry_type_stats': entry_type_stats,
+        'timeline_events': timeline_events,
+        'shared_formulas': shared_formulas,
+        'entry_form': entry_form,
+        'note_form': note_form,
+        'reference_form': reference_form,
+        'can_edit': can_edit,
+        'can_create': has_perm(request.user, 'create'),
+        'can_export': has_perm(request.user, 'export'),
+        'user_role': get_user_role(request.user) if request.user.is_authenticated else 'guest',
+    }
+    return render(request, 'formulas/topic_detail.html', context)
+
+
+@login_required
+@perm_required('create')
+def topic_create(request):
+    if request.method == 'POST':
+        form = ResearchTopicForm(request.POST)
+        if form.is_valid():
+            topic = form.save(commit=False)
+            topic.created_by = request.user
+            topic.save()
+            form._save_keywords(topic)
+            log_operation(request.user, 'create', target_model='ResearchTopic',
+                          target_id=topic.pk, target_name=topic.title,
+                          description=f'创建研究专题：{topic.title}', request=request)
+            messages.success(request, '研究专题已创建')
+            return redirect('formulas:topic_detail', pk=topic.pk)
+    else:
+        form = ResearchTopicForm()
+
+    context = {
+        'form': form,
+        'title': '新建研究专题',
+    }
+    return render(request, 'formulas/topic_form.html', context)
+
+
+@login_required
+@perm_required('update')
+def topic_edit(request, pk):
+    topic = get_object_or_404(ResearchTopic, pk=pk)
+
+    if request.method == 'POST':
+        form = ResearchTopicForm(request.POST, instance=topic)
+        if form.is_valid():
+            topic = form.save()
+            log_operation(request.user, 'update', target_model='ResearchTopic',
+                          target_id=topic.pk, target_name=topic.title,
+                          description=f'编辑研究专题：{topic.title}', request=request)
+            messages.success(request, '研究专题已更新')
+            return redirect('formulas:topic_detail', pk=topic.pk)
+    else:
+        form = ResearchTopicForm(instance=topic)
+
+    context = {
+        'form': form,
+        'title': '编辑研究专题',
+        'topic': topic,
+    }
+    return render(request, 'formulas/topic_form.html', context)
+
+
+@login_required
+@perm_required('delete')
+def topic_delete(request, pk):
+    topic = get_object_or_404(ResearchTopic, pk=pk)
+    log_operation(request.user, 'delete', target_model='ResearchTopic',
+                  target_id=topic.pk, target_name=topic.title,
+                  description=f'删除研究专题：{topic.title}', request=request)
+    topic.delete()
+    messages.success(request, '研究专题已删除')
+    return redirect('formulas:topic_list')
+
+
+@login_required
+@perm_required('export')
+def topic_export(request, pk):
+    topic = get_object_or_404(ResearchTopic, pk=pk)
+    fmt = request.GET.get('format', 'csv')
+
+    log_operation(request.user, 'export', target_model='ResearchTopic',
+                  target_id=topic.pk, target_name=topic.title,
+                  description=f'导出专题成果：{topic.title}', request=request)
+
+    rows = []
+    rows.append({
+        '专题名称': topic.title,
+        '主题类别': topic.get_category_display(),
+        '研究状态': topic.get_status_display(),
+        '负责人': str(topic.leader) if topic.leader else '',
+        '研究说明': topic.research_note,
+        '阶段结论': topic.stage_conclusion,
+        '创建时间': topic.created_at.strftime('%Y-%m-%d %H:%M'),
+    })
+
+    rows.append({'专题名称': '', '主题类别': '', '研究状态': '', '负责人': '',
+                 '研究说明': '', '阶段结论': '', '创建时间': ''})
+
+    rows.append({'专题名称': '=== 关键词 ===', '主题类别': '', '研究状态': '',
+                 '负责人': '', '研究说明': '', '阶段结论': '', '创建时间': ''})
+    for kw in topic.keywords.all():
+        rows.append({'专题名称': kw.keyword, '主题类别': '', '研究状态': '',
+                     '负责人': '', '研究说明': '', '阶段结论': '', '创建时间': ''})
+
+    rows.append({'专题名称': '=== 归集条目 ===', '主题类别': '', '研究状态': '',
+                 '负责人': '', '研究说明': '', '阶段结论': '', '创建时间': ''})
+
+    entry_header = {
+        '专题名称': '条目类型', '主题类别': '条目名称', '研究状态': '归集说明',
+        '负责人': '添加人', '研究说明': '', '阶段结论': '', '创建时间': '归集时间',
+    }
+    rows.append(entry_header)
+
+    for entry in topic.entries.all():
+        obj_name = ''
+        if entry.content_type == 'formula' and entry.formula:
+            obj_name = f'{entry.formula.formula_no} - {entry.formula.name}'
+        elif entry.content_type == 'literature' and entry.literature:
+            obj_name = entry.literature.title
+        elif entry.content_type == 'annotation' and entry.annotation:
+            obj_name = entry.annotation.title
+        elif entry.content_type == 'dispute' and entry.dispute:
+            obj_name = entry.dispute.title
+        elif entry.content_type == 'review' and entry.review:
+            obj_name = str(entry.review)
+        rows.append({
+            '专题名称': entry.get_content_type_display(),
+            '主题类别': obj_name,
+            '研究状态': entry.note,
+            '负责人': str(entry.added_by) if entry.added_by else '',
+            '研究说明': '', '阶段结论': '', '创建时间': entry.added_at.strftime('%Y-%m-%d %H:%M'),
+        })
+
+    rows.append({'专题名称': '=== 研究笔记 ===', '主题类别': '', '研究状态': '',
+                 '负责人': '', '研究说明': '', '阶段结论': '', '创建时间': ''})
+    note_header = {
+        '专题名称': '笔记类型', '主题类别': '标题', '研究状态': '内容',
+        '负责人': '创建人', '研究说明': '', '阶段结论': '', '创建时间': '创建时间',
+    }
+    rows.append(note_header)
+    for note in topic.notes.all():
+        rows.append({
+            '专题名称': note.get_note_type_display(),
+            '主题类别': note.title,
+            '研究状态': note.content[:500],
+            '负责人': str(note.created_by) if note.created_by else '',
+            '研究说明': '', '阶段结论': '', '创建时间': note.created_at.strftime('%Y-%m-%d %H:%M'),
+        })
+
+    rows.append({'专题名称': '=== 参考资料 ===', '主题类别': '', '研究状态': '',
+                 '负责人': '', '研究说明': '', '阶段结论': '', '创建时间': ''})
+    ref_header = {
+        '专题名称': '资料标题', '主题类别': '作者', '研究状态': '来源',
+        '负责人': '链接', '研究说明': '备注', '阶段结论': '', '创建时间': '',
+    }
+    rows.append(ref_header)
+    for ref in topic.references.all():
+        rows.append({
+            '专题名称': ref.title,
+            '主题类别': ref.author,
+            '研究状态': ref.source,
+            '负责人': ref.url,
+            '研究说明': ref.note,
+            '阶段结论': '', '创建时间': '',
+        })
+
+    timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+    filename = f'topic_{topic.pk}_{timestamp}'
+
+    if fmt == 'json':
+        export_rows = []
+        for row in rows:
+            cleaned = {k: v for k, v in row.items() if v}
+            if cleaned:
+                export_rows.append(cleaned)
+        data = json.dumps(export_rows, ensure_ascii=False, indent=2)
+        response = HttpResponse(data, content_type='application/json')
+        response['Content-Disposition'] = f'attachment; filename="{filename}.json"'
+    else:
+        data = _rows_to_csv(rows)
+        response = HttpResponse(data, content_type='text/csv; charset=utf-8-sig')
+        response['Content-Disposition'] = f'attachment; filename="{filename}.csv"'
+        response.write('\ufeff')
+        response.write(data)
+
+    return response

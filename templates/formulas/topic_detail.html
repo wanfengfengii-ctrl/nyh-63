@@ -1,0 +1,384 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}{{ topic.title }} - 研究专题{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+    <div>
+        <a href="{% url 'formulas:topic_list' %}" style="font-size:13px; color:#6b4423;">← 返回专题列表</a>
+        <h2 style="color:#4a3728; margin:8px 0 0;">{{ topic.title }}</h2>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        {% if can_edit %}
+        <a href="{% url 'formulas:topic_edit' topic.pk %}" class="btn" style="background:#e8dfc8; color:#4a3728;">编辑专题</a>
+        {% endif %}
+        {% if can_export %}
+        <a href="{% url 'formulas:topic_export' topic.pk %}?format=csv" class="btn btn-primary">导出CSV</a>
+        <a href="{% url 'formulas:topic_export' topic.pk %}?format=json" class="btn" style="background:#e8dfc8; color:#4a3728;">导出JSON</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="detail-card" style="padding:20px; margin-bottom:20px; background:linear-gradient(135deg, #f0e6d0 0%, #fff9ef 100%);">
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+        <span style="padding:3px 12px; border-radius:14px; font-size:13px; font-weight:500; background:#fff; border:1px solid #e8dfc8; color:#6b4423;">{{ topic.get_category_display }}</span>
+        {% if topic.status == 'planning' %}
+        <span style="padding:3px 12px; border-radius:14px; font-size:13px; font-weight:500; background:#e0e0e0; color:#555;">规划中</span>
+        {% elif topic.status == 'in_progress' %}
+        <span style="padding:3px 12px; border-radius:14px; font-size:13px; font-weight:500; background:#fff3cd; color:#856404;">研究中</span>
+        {% elif topic.status == 'completed' %}
+        <span style="padding:3px 12px; border-radius:14px; font-size:13px; font-weight:500; background:#d4edda; color:#155724;">已完成</span>
+        {% elif topic.status == 'published' %}
+        <span style="padding:3px 12px; border-radius:14px; font-size:13px; font-weight:500; background:#cce5ff; color:#004085;">已发布</span>
+        {% endif %}
+        {% if topic.leader %}
+        <span style="padding:3px 12px; border-radius:14px; font-size:13px; font-weight:500; background:#fff; border:1px solid #e8dfc8; color:#4a3728;">👤 {{ topic.leader.username }}</span>
+        {% endif %}
+    </div>
+    {% if topic.description %}
+    <div style="font-size:14px; color:#4a3728; line-height:1.6; margin-bottom:12px;">{{ topic.description }}</div>
+    {% endif %}
+    {% if keywords %}
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">
+        <span style="font-size:12px; color:#7a6b55; line-height:24px;">关键词：</span>
+        {% for kw in keywords %}
+        <span style="padding:2px 10px; border-radius:12px; font-size:12px; background:#fff; border:1px solid #e8dfc8; color:#8b6914;">{{ kw.keyword }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <div style="display:flex; gap:24px; flex-wrap:wrap; font-size:13px; color:#7a6b55;">
+        {% if topic.started_at %}<span>研究起始：{{ topic.started_at|date:"Y-m-d" }}</span>{% endif %}
+        {% if topic.completed_at %}<span>完成日期：{{ topic.completed_at|date:"Y-m-d" }}</span>{% endif %}
+        <span>创建时间：{{ topic.created_at|date:"Y-m-d H:i" }}</span>
+    </div>
+</div>
+
+<div class="stats-grid" style="margin-bottom:20px;">
+    <div class="stat-card">
+        <div class="stat-value">{{ entry_type_stats.formula }}</div>
+        <div class="stat-label">配方</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ entry_type_stats.literature }}</div>
+        <div class="stat-label">文献</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ entry_type_stats.annotation }}</div>
+        <div class="stat-label">注释</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ entry_type_stats.dispute }}</div>
+        <div class="stat-label">争议</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ entry_type_stats.review }}</div>
+        <div class="stat-label">评审</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ notes.count }}</div>
+        <div class="stat-label">研究笔记</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ references.count }}</div>
+        <div class="stat-label">参考资料</div>
+    </div>
+</div>
+
+{% if topic.research_note %}
+<div class="section-title">研究说明</div>
+<div class="detail-card" style="padding:16px; margin-bottom:20px;">
+    <div style="font-size:14px; color:#4a3728; line-height:1.7; white-space:pre-wrap;">{{ topic.research_note }}</div>
+</div>
+{% endif %}
+
+{% if topic.stage_conclusion %}
+<div class="section-title">阶段结论</div>
+<div class="detail-card" style="padding:16px; margin-bottom:20px; border-left:4px solid #8b6914;">
+    <div style="font-size:14px; color:#4a3728; line-height:1.7; white-space:pre-wrap;">{{ topic.stage_conclusion }}</div>
+</div>
+{% endif %}
+
+<div class="two-col">
+    <div>
+        <div class="section-title">归集条目</div>
+        {% if can_edit %}
+        <div class="detail-card" style="padding:16px; margin-bottom:16px; background:#faf6ed;">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_entry">
+                <div style="font-size:14px; font-weight:600; color:#4a3728; margin-bottom:10px;">添加条目到专题</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                    <div>
+                        <label style="font-size:12px; color:#7a6b55;">条目类型</label>
+                        {{ entry_form.content_type }}
+                    </div>
+                    <div id="entry-object-field">
+                        <label style="font-size:12px; color:#7a6b55;">选择对象</label>
+                        {{ entry_form.formula }}
+                    </div>
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:12px; color:#7a6b55;">归集说明</label>
+                    {{ entry_form.note }}
+                </div>
+                <button type="submit" class="btn btn-primary" style="font-size:13px;">归集</button>
+            </form>
+            <script>
+            (function(){
+                var ct = document.getElementById('id_entry_content_type');
+                var fields = {
+                    'formula': document.getElementById('id_entry_formula')?.parentElement,
+                    'literature': document.getElementById('id_entry_literature')?.parentElement,
+                    'annotation': document.getElementById('id_entry_annotation')?.parentElement,
+                    'dispute': document.getElementById('id_entry_dispute')?.parentElement,
+                    'review': document.getElementById('id_entry_review')?.parentElement,
+                };
+                function updateFields(){
+                    var val = ct.value;
+                    var container = document.getElementById('entry-object-field');
+                    container.innerHTML = '';
+                    var sel = null;
+                    if(val === 'formula') sel = document.getElementById('id_entry_formula');
+                    else if(val === 'literature') sel = document.getElementById('id_entry_literature');
+                    else if(val === 'annotation') sel = document.getElementById('id_entry_annotation');
+                    else if(val === 'dispute') sel = document.getElementById('id_entry_dispute');
+                    else if(val === 'review') sel = document.getElementById('id_entry_review');
+                    if(sel) container.appendChild(sel);
+                }
+                if(ct) { ct.addEventListener('change', updateFields); updateFields(); }
+            })();
+            </script>
+        </div>
+        {% endif %}
+
+        {% if entries %}
+        {% for entry in entries %}
+        <div class="detail-card" style="padding:14px 18px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                <div style="flex:1; min-width:0;">
+                    <div style="display:flex; gap:6px; align-items:center; margin-bottom:4px;">
+                        {% if entry.content_type == 'formula' %}
+                        <span style="padding:2px 8px; border-radius:10px; font-size:11px; background:#f0e6d0; color:#6b4423;">配方</span>
+                        {% if entry.formula %}
+                        <a href="{% url 'formulas:formula_detail' entry.formula.pk %}" style="font-weight:600; color:#4a3728;">{{ entry.formula.formula_no }} - {{ entry.formula.name }}</a>
+                        {% endif %}
+                        {% elif entry.content_type == 'literature' %}
+                        <span style="padding:2px 8px; border-radius:10px; font-size:11px; background:#d6e8ff; color:#1a4e8a;">文献</span>
+                        {% if entry.literature %}
+                        <a href="{% url 'formulas:literature_detail' entry.literature.pk %}" style="font-weight:600; color:#4a3728;">{{ entry.literature.title }}</a>
+                        {% endif %}
+                        {% elif entry.content_type == 'annotation' %}
+                        <span style="padding:2px 8px; border-radius:10px; font-size:11px; background:#e0f2e0; color:#2d6a2d;">注释</span>
+                        {% if entry.annotation %}
+                        <a href="{% url 'formulas:annotation_detail' entry.annotation.pk %}" style="font-weight:600; color:#4a3728;">{{ entry.annotation.title }}</a>
+                        {% endif %}
+                        {% elif entry.content_type == 'dispute' %}
+                        <span style="padding:2px 8px; border-radius:10px; font-size:11px; background:#fde2e2; color:#a12828;">争议</span>
+                        {% if entry.dispute %}
+                        <a href="{% url 'formulas:dispute_detail' entry.dispute.pk %}" style="font-weight:600; color:#4a3728;">{{ entry.dispute.title }}</a>
+                        {% endif %}
+                        {% elif entry.content_type == 'review' %}
+                        <span style="padding:2px 8px; border-radius:10px; font-size:11px; background:#fff3cd; color:#856404;">评审</span>
+                        {% if entry.review %}
+                        <span style="font-weight:600; color:#4a3728;">{{ entry.review }}</span>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                    {% if entry.note %}
+                    <div style="font-size:13px; color:#5a4a32; line-height:1.5;">{{ entry.note }}</div>
+                    {% endif %}
+                    <div style="font-size:11px; color:#9a8b75; margin-top:4px;">
+                        {% if entry.added_by %}{{ entry.added_by.username }} · {% endif %}{{ entry.added_at|date:"Y-m-d H:i" }}
+                    </div>
+                </div>
+                {% if can_edit %}
+                <form method="post" style="display:inline;">{% csrf_token %}
+                    <input type="hidden" name="action" value="remove_entry">
+                    <input type="hidden" name="entry_id" value="{{ entry.pk }}">
+                    <button type="submit" style="background:none; border:none; color:#b33a3a; cursor:pointer; font-size:13px; padding:4px;" onclick="return confirm('确认移除此条目？')">移除</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="detail-card">
+            <div class="empty-state"><p>暂无归集条目</p></div>
+        </div>
+        {% endif %}
+
+        {% if shared_formulas %}
+        <div class="section-title">跨专题关联</div>
+        <div class="detail-card" style="padding:16px;">
+            {% for formula_id, other_topics in shared_formulas.items %}
+            {% for ot in other_topics %}
+            <div style="font-size:13px; color:#5a4a32; margin-bottom:6px;">
+                <a href="{% url 'formulas:topic_detail' ot.pk %}" style="color:#6b4423; font-weight:500;">{{ ot.title }}</a>
+                中也包含此配方
+            </div>
+            {% endfor %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div>
+        <div class="section-title">时间线</div>
+        {% if timeline_events %}
+        <div class="detail-card" style="padding:16px;">
+            {% for event in timeline_events %}
+            <div style="display:flex; gap:12px; margin-bottom:14px; {% if not forloop.last %}padding-bottom:14px; border-bottom:1px solid #e8dfc8;{% endif %}">
+                <div style="width:8px; height:8px; border-radius:50%; margin-top:6px; flex-shrink:0;
+                    {% if event.type == 'entry' %}background:#8b6914;{% else %}background:#4a7c4a;{% endif %}"></div>
+                <div style="flex:1; min-width:0;">
+                    <div style="font-size:13px; color:#4a3728;">
+                        <strong>{{ event.label }}</strong> · {{ event.detail|truncatechars:60 }}
+                    </div>
+                    <div style="font-size:11px; color:#9a8b75;">{{ event.date|date:"Y-m-d H:i" }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="detail-card">
+            <div class="empty-state"><p>暂无时间线事件</p></div>
+        </div>
+        {% endif %}
+
+        <div class="section-title">研究笔记</div>
+        {% if can_edit %}
+        <div class="detail-card" style="padding:16px; margin-bottom:16px; background:#faf6ed;">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_note">
+                <div style="display:grid; grid-template-columns:1fr 2fr; gap:10px; margin-bottom:10px;">
+                    <div>
+                        <label style="font-size:12px; color:#7a6b55;">笔记类型</label>
+                        {{ note_form.note_type }}
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:#7a6b55;">标题</label>
+                        {{ note_form.title }}
+                    </div>
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:12px; color:#7a6b55;">内容</label>
+                    {{ note_form.content }}
+                </div>
+                <button type="submit" class="btn btn-primary" style="font-size:13px;">添加笔记</button>
+            </form>
+        </div>
+        {% endif %}
+
+        {% if notes %}
+        {% for note in notes %}
+        <div class="detail-card" style="padding:14px 18px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                <div style="flex:1; min-width:0;">
+                    <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+                        {% if note.note_type == 'research_note' %}
+                        <span style="padding:2px 8px; border-radius:10px; font-size:11px; background:#f0e6d0; color:#6b4423;">研究说明</span>
+                        {% elif note.note_type == 'conclusion' %}
+                        <span style="padding:2px 8px; border-radius:10px; font-size:11px; background:#d4edda; color:#155724;">阶段结论</span>
+                        {% elif note.note_type == 'finding' %}
+                        <span style="padding:2px 8px; border-radius:10px; font-size:11px; background:#cce5ff; color:#004085;">研究发现</span>
+                        {% elif note.note_type == 'question' %}
+                        <span style="padding:2px 8px; border-radius:10px; font-size:11px; background:#fff3cd; color:#856404;">待解问题</span>
+                        {% endif %}
+                        <strong style="font-size:14px; color:#4a3728;">{{ note.title }}</strong>
+                    </div>
+                    <div style="font-size:13px; color:#5a4a32; line-height:1.5; white-space:pre-wrap;">{{ note.content|truncatechars:300 }}</div>
+                    <div style="font-size:11px; color:#9a8b75; margin-top:6px;">
+                        {% if note.created_by %}{{ note.created_by.username }} · {% endif %}{{ note.created_at|date:"Y-m-d H:i" }}
+                    </div>
+                </div>
+                {% if can_edit %}
+                <form method="post" style="display:inline;">{% csrf_token %}
+                    <input type="hidden" name="action" value="delete_note">
+                    <input type="hidden" name="note_id" value="{{ note.pk }}">
+                    <button type="submit" style="background:none; border:none; color:#b33a3a; cursor:pointer; font-size:13px; padding:4px;" onclick="return confirm('确认删除此笔记？')">删除</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="detail-card">
+            <div class="empty-state"><p>暂无研究笔记</p></div>
+        </div>
+        {% endif %}
+
+        <div class="section-title">参考资料</div>
+        {% if can_edit %}
+        <div class="detail-card" style="padding:16px; margin-bottom:16px; background:#faf6ed;">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_reference">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                    <div>
+                        <label style="font-size:12px; color:#7a6b55;">资料标题</label>
+                        {{ reference_form.title }}
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:#7a6b55;">作者</label>
+                        {{ reference_form.author }}
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:#7a6b55;">来源</label>
+                        {{ reference_form.source }}
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:#7a6b55;">链接</label>
+                        {{ reference_form.url }}
+                    </div>
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:12px; color:#7a6b55;">备注</label>
+                    {{ reference_form.note }}
+                </div>
+                <button type="submit" class="btn btn-primary" style="font-size:13px;">添加参考资料</button>
+            </form>
+        </div>
+        {% endif %}
+
+        {% if references %}
+        {% for ref in references %}
+        <div class="detail-card" style="padding:14px 18px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                <div style="flex:1; min-width:0;">
+                    <div style="font-size:14px; font-weight:600; color:#4a3728; margin-bottom:4px;">
+                        {{ ref.title }}
+                        {% if ref.author %}<span style="font-weight:400; color:#7a6b55; font-size:13px;"> - {{ ref.author }}</span>{% endif %}
+                    </div>
+                    {% if ref.source %}
+                    <div style="font-size:12px; color:#7a6b55;">来源：{{ ref.source }}</div>
+                    {% endif %}
+                    {% if ref.url %}
+                    <div style="font-size:12px;"><a href="{{ ref.url }}" target="_blank" style="color:#6b4423;">{{ ref.url|truncatechars:60 }}</a></div>
+                    {% endif %}
+                    {% if ref.note %}
+                    <div style="font-size:13px; color:#5a4a32; margin-top:4px;">{{ ref.note }}</div>
+                    {% endif %}
+                </div>
+                {% if can_edit %}
+                <form method="post" style="display:inline;">{% csrf_token %}
+                    <input type="hidden" name="action" value="delete_reference">
+                    <input type="hidden" name="ref_id" value="{{ ref.pk }}">
+                    <button type="submit" style="background:none; border:none; color:#b33a3a; cursor:pointer; font-size:13px; padding:4px;" onclick="return confirm('确认删除此参考资料？')">删除</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="detail-card">
+            <div class="empty-state"><p>暂无参考资料</p></div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="detail-card" style="padding:14px; margin-top:16px; text-align:center; background:#faf6ed;">
+    <span style="font-size:12px; color:#7a6b55;">⚠️ 本系统仅用于文献整理、学术研究与安全审查，不提供任何实际制造指导。</span>
+</div>
+{% endblock %}
