@@ -1,0 +1,1462 @@
+{% extends 'formulas/base.html' %}
+
+{% block title %}跨文献关系图谱与知识溯源 - 历史火药配方文献管理系统{% endblock %}
+
+{% block content %}
+<style>
+.graph-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr 320px;
+    gap: 12px;
+    height: calc(100vh - 200px);
+    min-height: 650px;
+}
+.filter-panel, .detail-panel {
+    background: #fdf6ea;
+    border: 1px solid #e4d5b7;
+    border-radius: 8px;
+    padding: 14px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.filter-group label {
+    font-weight: 600;
+    color: #5c4a2a;
+    font-size: 13px;
+}
+.filter-group select, .filter-group input {
+    padding: 6px 8px;
+    border: 1px solid #c9b88e;
+    border-radius: 4px;
+    background: #fff;
+    font-size: 13px;
+}
+.node-type-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.node-type-chip {
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 12px;
+    cursor: pointer;
+    border: 2px solid;
+    user-select: none;
+    transition: opacity 0.15s;
+}
+.node-type-chip.active { opacity: 1; }
+.node-type-chip.inactive { opacity: 0.25; }
+
+.graph-area {
+    background: #fffdf7;
+    border: 1px solid #e4d5b7;
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+}
+#graph-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+.graph-toolbar {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: none;
+}
+.graph-toolbar > * { pointer-events: auto; }
+.graph-stats {
+    background: rgba(253, 246, 234, 0.95);
+    border: 1px solid #c9b88e;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    color: #5c4a2a;
+}
+.graph-actions {
+    display: flex;
+    gap: 6px;
+}
+.btn-graph {
+    padding: 6px 14px;
+    background: #8b6f3a;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+.btn-graph:hover { background: #705729; }
+.btn-graph.secondary { background: #5c7a9e; }
+.btn-graph.secondary:hover { background: #486383; }
+.btn-graph.danger { background: #9e5848; }
+.btn-graph.danger:hover { background: #85463a; }
+
+.view-switch {
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(253, 246, 234, 0.95);
+    border: 1px solid #c9b88e;
+    border-radius: 20px;
+    padding: 4px;
+    display: flex;
+    gap: 2px;
+    pointer-events: auto;
+}
+.view-switch button {
+    padding: 4px 14px;
+    border: none;
+    background: transparent;
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #5c4a2a;
+}
+.view-switch button.active {
+    background: #8b6f3a;
+    color: white;
+}
+
+.detail-section {
+    background: #fff;
+    border: 1px solid #e4d5b7;
+    border-radius: 6px;
+    padding: 10px;
+}
+.detail-section h4 {
+    margin: 0 0 8px 0;
+    color: #5c4a2a;
+    font-size: 14px;
+    border-bottom: 1px solid #e4d5b7;
+    padding-bottom: 6px;
+}
+.detail-item {
+    display: flex;
+    gap: 6px;
+    margin: 4px 0;
+    font-size: 12px;
+}
+.detail-item .label {
+    font-weight: 600;
+    color: #7a6b55;
+    min-width: 70px;
+}
+.detail-item .value {
+    color: #3a3020;
+    word-break: break-all;
+}
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    margin: 2px;
+}
+.badge-type {
+    color: white;
+    font-weight: 600;
+}
+.badge-info {
+    background: #e8e0cc;
+    color: #5c4a2a;
+}
+.link-btn {
+    display: inline-block;
+    padding: 3px 10px;
+    background: #5c7a9e;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 12px;
+    margin: 2px;
+}
+.link-btn:hover { background: #486383; }
+
+.timeline-panel {
+    grid-column: 1 / -1;
+    background: #fdf6ea;
+    border: 1px solid #e4d5b7;
+    border-radius: 8px;
+    padding: 14px;
+    max-height: 260px;
+    overflow-y: auto;
+}
+.timeline-title {
+    font-weight: 700;
+    color: #5c4a2a;
+    margin: 0 0 10px 0;
+    font-size: 15px;
+}
+.timeline-list {
+    position: relative;
+    padding-left: 30px;
+}
+.timeline-list::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 4px;
+    bottom: 4px;
+    width: 2px;
+    background: #c9b88e;
+}
+.timeline-item {
+    position: relative;
+    margin-bottom: 10px;
+    padding: 6px 10px;
+    background: #fff;
+    border: 1px solid #e4d5b7;
+    border-radius: 4px;
+}
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -26px;
+    top: 10px;
+    width: 12px;
+    height: 12px;
+    background: #8b6f3a;
+    border: 2px solid #fdf6ea;
+    border-radius: 50%;
+}
+.timeline-item .date {
+    font-weight: 700;
+    color: #8b6f3a;
+    font-size: 12px;
+}
+.timeline-item .t-title {
+    font-weight: 600;
+    color: #3a3020;
+    font-size: 13px;
+    margin: 2px 0;
+}
+.timeline-item .t-desc {
+    font-size: 12px;
+    color: #7a6b55;
+}
+.timeline-item.type-literature::before { background: #8b5a2b; }
+.timeline-item.type-ingredient_usage::before { background: #4cae4c; }
+.timeline-item.type-annotation::before { background: #9b59b6; }
+.timeline-item.type-dispute::before { background: #e67e22; }
+.timeline-item.type-dispute_progress::before { background: #f39c12; }
+.timeline-item.type-review::before { background: #c0392b; }
+.timeline-item.type-review_flow::before { background: #d9534f; }
+.timeline-item.type-version::before { background: #2e6da4; }
+
+.usage-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    margin-top: 6px;
+}
+.usage-table th, .usage-table td {
+    border: 1px solid #e4d5b7;
+    padding: 3px 5px;
+    text-align: left;
+}
+.usage-table th {
+    background: #f0e6d0;
+    color: #5c4a2a;
+}
+.usage-table tr:hover { background: #fff8e8; }
+
+.ingredient-section { margin-top: 8px; }
+.distribution-bar {
+    display: flex;
+    height: 20px;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 4px 0;
+    border: 1px solid #e4d5b7;
+}
+.distribution-bar div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: white;
+    font-weight: 600;
+    min-width: 30px;
+}
+.distribution-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 11px;
+    margin-top: 4px;
+}
+.distribution-legend span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.dist-legend-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+}
+.legend-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+.graph-legend {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(253, 246, 234, 0.95);
+    border: 1px solid #c9b88e;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 11px;
+    pointer-events: auto;
+}
+.graph-legend div { margin: 2px 0; color: #5c4a2a; }
+
+.loading-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255, 253, 247, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+.loading-spinner {
+    border: 4px solid #e4d5b7;
+    border-top: 4px solid #8b6f3a;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin { 0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);} }
+
+.empty-hint {
+    color: #7a6b55;
+    text-align: center;
+    padding: 20px;
+    font-size: 13px;
+    font-style: italic;
+}
+
+.evidence-source {
+    background: #faf3e3;
+    border-left: 3px solid #c9b88e;
+    padding: 6px 10px;
+    margin: 4px 0;
+    font-size: 12px;
+    border-radius: 0 4px 4px 0;
+}
+.evidence-source .src-label {
+    font-weight: 600;
+    color: #7a6b55;
+}
+.tabs-header {
+    display: flex;
+    border-bottom: 2px solid #e4d5b7;
+    margin-bottom: 8px;
+    gap: 2px;
+}
+.tab-btn {
+    padding: 6px 12px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    color: #7a6b55;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+}
+.tab-btn.active {
+    color: #5c4a2a;
+    border-bottom-color: #8b6f3a;
+    font-weight: 600;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.page-header {
+    background: linear-gradient(135deg, #fdf6ea 0%, #f0e0c0 100%);
+    border: 1px solid #c9b88e;
+    border-radius: 8px;
+    padding: 14px 20px;
+    margin-bottom: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.page-header h2 {
+    margin: 0 0 4px 0;
+    color: #5c4a2a;
+    font-size: 20px;
+}
+.page-header p {
+    margin: 0;
+    color: #7a6b55;
+    font-size: 13px;
+}
+.disclaimer-note {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+}
+</style>
+
+<div class="page-header">
+    <div>
+        <h2>🕸️ 跨文献关系图谱与知识溯源</h2>
+        <p>建立文献、配方、成分、学术注释、争议条目与安全评审的关联网络，支持知识溯源与证据链追踪</p>
+    </div>
+    <div class="disclaimer-note">
+        <strong>⚠️ 仅限学术研究用途</strong><br>
+        本模块不提供任何实际制造指导
+    </div>
+</div>
+
+<div class="graph-layout">
+    <div class="filter-panel">
+        <div class="filter-group">
+            <label>📊 视图模式</label>
+            <select id="view-mode">
+                <option value="global">全局关系图谱</option>
+                <option value="trace">配方溯源分析</option>
+                <option value="ingredient">成分差异分析</option>
+            </select>
+        </div>
+
+        <div class="filter-group" id="filter-global">
+            <label>🏯 年代/朝代筛选</label>
+            <select id="filter-dynasty">
+                <option value="">全部年代</option>
+                {% for d in dynasties %}
+                <option value="{{ d }}" {% if initial_dynasty == d %}selected{% endif %}>{{ d }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group" id="filter-global-region">
+            <label>🗺️ 来源地区筛选</label>
+            <select id="filter-region">
+                <option value="">全部地区</option>
+                {% for r in regions %}
+                <option value="{{ r }}">{{ r }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group" id="filter-ingredient">
+            <label>🧪 成分名称</label>
+            <select id="filter-ingredient-name">
+                <option value="">选择成分...</option>
+                {% for ing in ingredients %}
+                <option value="{{ ing }}" {% if initial_ingredient == ing %}selected{% endif %}>{{ ing }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group" id="filter-dispute">
+            <label>⚖️ 争议类型筛选</label>
+            <select id="filter-dispute-type">
+                {% for val, label in dispute_types %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group" id="filter-trace">
+            <label>🔍 选择配方溯源</label>
+            <select id="filter-trace-formula">
+                <option value="">选择配方...</option>
+                {% for fpk, fno, fname in formulas_for_select %}
+                <option value="{{ fpk }}" {% if initial_formula == fpk|stringformat:"i" %}selected{% endif %}>{{ fno }} - {{ fname }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>🟢 节点类型显示</label>
+            <div class="node-type-list" id="node-type-filters">
+                {% for key, label in node_types %}
+                <span class="node-type-chip active"
+                      data-type="{{ key }}"
+                      style="border-color:{{ node_type_colors|dictsortreversed:0.0 }}{{ node_type_colors.key }}; background:{{ node_type_colors.key }}22; color:{{ node_type_colors.key }};">
+                    {{ label }}
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <button class="btn-graph" onclick="applyFilters()">🔍 应用筛选</button>
+        <button class="btn-graph secondary" onclick="resetFilters()">↺ 重置筛选</button>
+
+        <div class="detail-section">
+            <h4>📋 图谱统计</h4>
+            <div id="graph-stats-detail">
+                <div class="empty-hint">加载图谱后显示统计</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="graph-area" id="graph-area">
+        <div class="graph-toolbar">
+            <div class="graph-stats" id="graph-stats-bar">
+                节点: 0 | 关系: 0
+            </div>
+            <div class="graph-actions">
+                <button class="btn-graph secondary" onclick="zoomIn()">＋ 放大</button>
+                <button class="btn-graph secondary" onclick="zoomOut()">－ 缩小</button>
+                <button class="btn-graph secondary" onclick="resetView()">⛶ 居中</button>
+                <button class="btn-graph danger" onclick="togglePhysics()">⏸ 暂停</button>
+            </div>
+        </div>
+
+        <div class="view-switch">
+            <button class="active" data-view="global" onclick="switchView('global')">全局图谱</button>
+            <button data-view="trace" onclick="switchView('trace')">配方溯源</button>
+            <button data-view="ingredient" onclick="switchView('ingredient')">成分分析</button>
+        </div>
+
+        <canvas id="graph-canvas"></canvas>
+
+        <div class="graph-legend">
+            <div><span class="legend-swatch" style="background:#8b5a2b;"></span>文献</div>
+            <div><span class="legend-swatch" style="background:#2e6da4;"></span>配方</div>
+            <div><span class="legend-swatch" style="background:#4cae4c;"></span>成分</div>
+            <div><span class="legend-swatch" style="background:#9b59b6;"></span>学术注释</div>
+            <div><span class="legend-swatch" style="background:#e67e22;"></span>争议条目</div>
+            <div><span class="legend-swatch" style="background:#c0392b;"></span>安全评审</div>
+        </div>
+
+        <div class="loading-overlay" id="loading-overlay">
+            <div style="text-align:center;">
+                <div class="loading-spinner" style="margin:0 auto 10px;"></div>
+                <div style="color:#5c4a2a; font-size:14px;">正在构建关系网络...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="detail-panel" id="detail-panel">
+        <div class="tabs-header">
+            <button class="tab-btn active" data-tab="info" onclick="switchTab('info')">📄 基本信息</button>
+            <button class="tab-btn" data-tab="relations" onclick="switchTab('relations')">🔗 关联关系</button>
+            <button class="tab-btn" data-tab="evidence" onclick="switchTab('evidence')">📜 证据来源</button>
+        </div>
+
+        <div class="tab-content active" id="tab-info">
+            <div class="detail-section">
+                <h4 id="detail-title">节点详情</h4>
+                <div id="detail-content">
+                    <div class="empty-hint">点击图谱中的节点以查看详细信息<br>或使用筛选条件探索知识网络</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="tab-relations">
+            <div class="detail-section">
+                <h4>🔗 关联节点</h4>
+                <div id="detail-relations">
+                    <div class="empty-hint">选择节点后显示关联关系</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="tab-evidence">
+            <div class="detail-section">
+                <h4>📜 证据来源与学术支撑</h4>
+                <div id="detail-evidence">
+                    <div class="empty-hint">选择节点后显示证据链信息</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="timeline-panel" id="timeline-panel" style="display:none;">
+        <div class="timeline-title" id="timeline-title">⏳ 节点关系时间线</div>
+        <div class="timeline-list" id="timeline-list">
+            <div class="empty-hint">选择配方或成分后生成时间线视图</div>
+        </div>
+    </div>
+</div>
+
+<script>
+const NODE_COLORS = {
+    literature: '#8b5a2b',
+    formula: '#2e6da4',
+    ingredient: '#4cae4c',
+    annotation: '#9b59b6',
+    dispute: '#e67e22',
+    review: '#c0392b',
+};
+
+const NODE_LABELS = {
+    literature: '文献',
+    formula: '配方',
+    ingredient: '成分',
+    annotation: '学术注释',
+    dispute: '争议条目',
+    review: '安全评审',
+};
+
+const TYPE_CHIP_COLORS = {
+    literature: '#8b5a2b',
+    formula: '#2e6da4',
+    ingredient: '#4cae4c',
+    annotation: '#9b59b6',
+    dispute: '#e67e22',
+    review: '#c0392b',
+};
+
+document.querySelectorAll('.node-type-chip').forEach(chip => {
+    const t = chip.dataset.type;
+    const c = TYPE_CHIP_COLORS[t];
+    chip.style.borderColor = c;
+    chip.style.background = c + '22';
+    chip.style.color = c;
+    chip.addEventListener('click', () => {
+        chip.classList.toggle('active');
+        chip.classList.toggle('inactive');
+    });
+});
+
+let currentView = 'global';
+let currentData = null;
+let selectedNode = null;
+let graphNodes = [];
+let graphEdges = [];
+let physicsRunning = true;
+let scale = 1, offsetX = 0, offsetY = 0;
+let draggingNode = null;
+let panning = false;
+let lastX = 0, lastY = 0;
+
+const canvas = document.getElementById('graph-canvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+}
+window.addEventListener('resize', resizeCanvas);
+setTimeout(resizeCanvas, 100);
+
+function switchView(view) {
+    currentView = view;
+    document.querySelectorAll('.view-switch button').forEach(b => {
+        b.classList.toggle('active', b.dataset.view === view);
+    });
+    document.getElementById('view-mode').value = view;
+
+    document.getElementById('filter-trace').style.display = view === 'trace' ? '' : 'none';
+    document.getElementById('filter-ingredient').style.display = (view === 'ingredient' || view === 'global') ? '' : 'none';
+    document.getElementById('filter-global').style.display = view === 'global' ? '' : 'none';
+    document.getElementById('filter-global-region').style.display = view === 'global' ? '' : 'none';
+    document.getElementById('filter-dispute').style.display = view === 'global' ? '' : 'none';
+
+    document.getElementById('timeline-panel').style.display = (view === 'trace' || view === 'ingredient') ? '' : 'none';
+
+    if (view === 'trace') {
+        loadFormulaOptions();
+    } else {
+        applyFilters();
+    }
+}
+
+document.getElementById('view-mode').addEventListener('change', e => {
+    switchView(e.target.value);
+});
+
+let formulaOptionsLoaded = false;
+async function loadFormulaOptions() {
+    formulaOptionsLoaded = true;
+    return;
+}
+
+async function applyFilters() {
+    showLoading(true);
+    const activeTypes = Array.from(document.querySelectorAll('.node-type-chip.active'))
+        .map(c => c.dataset.type);
+
+    const params = new URLSearchParams();
+    activeTypes.forEach(t => params.append('node_types', t));
+
+    if (currentView === 'global') {
+        const dynasty = document.getElementById('filter-dynasty').value;
+        const region = document.getElementById('filter-region').value;
+        const ingredient = document.getElementById('filter-ingredient-name').value;
+        const disputeType = document.getElementById('filter-dispute-type').value;
+        if (dynasty) params.set('dynasty', dynasty);
+        if (region) params.set('region', region);
+        if (ingredient) params.set('ingredient', ingredient);
+        if (disputeType) params.set('dispute_type', disputeType);
+
+        const url = '{% url "formulas:knowledge_graph_data" %}?' + params.toString();
+        const resp = await fetch(url);
+        currentData = await resp.json();
+        graphNodes = currentData.nodes;
+        graphEdges = currentData.edges;
+        initGraphPhysics();
+        updateStatsDisplay(currentData.stats);
+        renderTimeline();
+    } else if (currentView === 'trace') {
+        const pk = document.getElementById('filter-trace-formula').value;
+        if (!pk) {
+            showLoading(false);
+            graphNodes = []; graphEdges = [];
+            draw();
+            return;
+        }
+        const url = `/graph/trace/formula/${pk}/`;
+        const resp = await fetch(url);
+        currentData = await resp.json();
+        graphNodes = currentData.nodes;
+        graphEdges = currentData.edges;
+        initGraphPhysics();
+        updateStatsDisplay({total_nodes: graphNodes.length, total_edges: graphEdges.length, by_type: countByType(graphNodes)});
+        renderTimeline(currentData.timeline || []);
+        document.getElementById('timeline-title').textContent = `⏳ 配方溯源时间线 - ${currentData.formula_info?.formula_no || ''} ${currentData.formula_info?.name || ''}`;
+    } else if (currentView === 'ingredient') {
+        const name = document.getElementById('filter-ingredient-name').value;
+        if (!name) {
+            showLoading(false);
+            graphNodes = []; graphEdges = [];
+            draw();
+            return;
+        }
+        const url = `/graph/ingredient/${encodeURIComponent(name)}/`;
+        const resp = await fetch(url);
+        const analysis = await resp.json();
+        currentData = analysis;
+        buildIngredientGraph(analysis);
+        renderIngredientDetail(analysis);
+        renderTimeline(analysis.timeline || []);
+        document.getElementById('timeline-title').textContent = `⏳ 成分时间线 - ${analysis.canonical_name}（${analysis.occurrence_count}处引用）`;
+    }
+    showLoading(false);
+    selectedNode = null;
+    clearDetail();
+}
+
+function countByType(nodes) {
+    const c = {};
+    nodes.forEach(n => { c[n.type] = (c[n.type] || 0) + 1; });
+    return c;
+}
+
+function buildIngredientGraph(analysis) {
+    const nodes = [];
+    const edges = [];
+    const iid = 'I_' + analysis.canonical_name;
+    nodes.push({
+        id: iid, type: 'ingredient', label: analysis.canonical_name,
+        color: NODE_COLORS.ingredient,
+        data: { canonical_name: analysis.canonical_name,
+                aliases: analysis.name_variants,
+                usages: analysis.occurrences,
+                percentage_range: analysis.percentage_range,
+                usage_distribution: analysis.usage_distribution,
+                region_distribution: analysis.region_distribution,
+                era_distribution: analysis.era_distribution,
+                literature_sources: analysis.literature_sources,
+                alias_evidence: analysis.alias_evidence,
+                related_disputes: analysis.related_disputes,
+                related_annotations: analysis.related_annotations,
+              },
+        size: 25,
+    });
+    const seen = { formula: {}, literature: {} };
+    analysis.occurrences.forEach((occ, i) => {
+        const fid = 'F' + occ.formula_pk;
+        if (!seen.formula[fid]) {
+            seen.formula[fid] = true;
+            nodes.push({
+                id: fid, type: 'formula', label: occ.formula_name,
+                color: NODE_COLORS.formula,
+                data: {
+                    pk: occ.formula_pk,
+                    formula_no: occ.formula_no,
+                    name: occ.formula_name,
+                    era: occ.era,
+                    region: occ.region,
+                    usage_category: occ.usage_category,
+                    safety_level: occ.safety_level,
+                    review_status: occ.review_status,
+                    literature_title: occ.literature_title,
+                },
+                size: 12,
+            });
+        }
+        edges.push({
+            source: fid, target: iid, type: 'contains',
+            label: `含 ${occ.percentage}%`,
+            data: { percentage: occ.percentage,
+                    name_in_formula: occ.name_in_formula,
+                    chinese_name: occ.chinese_name },
+        });
+        if (occ.literature_title) {
+            const lid = 'L_' + occ.literature_title;
+            if (!seen.literature[lid]) {
+                seen.literature[lid] = true;
+                nodes.push({
+                    id: lid, type: 'literature', label: occ.literature_title.slice(0, 30),
+                    color: NODE_COLORS.literature,
+                    data: { title: occ.literature_title,
+                            publication_year: occ.literature_year,
+                            dynasty: occ.literature_dynasty },
+                    size: 10,
+                });
+            }
+            edges.push({
+                source: fid, target: lid, type: 'appears_in', label: '出自',
+            });
+        }
+    });
+    graphNodes = nodes;
+    graphEdges = edges;
+    initGraphPhysics();
+    updateStatsDisplay({total_nodes: nodes.length, total_edges: edges.length, by_type: countByType(nodes)});
+}
+
+function renderIngredientDetail(a) {
+    let html = '';
+    html += `<div class="detail-item"><span class="label">规范名</span><span class="value">${a.canonical_name}</span></div>`;
+    if (a.query_name !== a.canonical_name) {
+        html += `<div class="detail-item"><span class="label">检索词</span><span class="value">${a.query_name}</span></div>`;
+    }
+    html += `<div class="detail-item"><span class="label">异名/古称</span><span class="value">${a.name_variants.map(v => `<span class="badge badge-info">${v}</span>`).join(' ')}</span></div>`;
+    html += `<div class="detail-item"><span class="label">出现次数</span><span class="value"><strong style="color:#4cae4c;font-size:16px;">${a.occurrence_count}</strong> 次</span></div>`;
+    html += `<div class="detail-item"><span class="label">比例范围</span><span class="value">${a.percentage_range.min}% ~ ${a.percentage_range.max}%</span></div>`;
+    html += `<hr style="border:none;border-top:1px solid #e4d5b7;margin:8px 0;">`;
+    html += `<strong style="color:#5c4a2a;font-size:12px;">📊 用途分布</strong>`;
+    html += renderDistribution(a.usage_distribution, ['#2e6da4', '#4cae4c', '#9b59b6', '#e67e22', '#c0392b', '#8b5a2b']);
+    html += `<strong style="color:#5c4a2a;font-size:12px;">🗺️ 地区分布</strong>`;
+    html += renderDistribution(a.region_distribution, ['#5c7a9e', '#8b6f3a', '#4cae4c', '#9b59b6', '#e67e22']);
+    html += `<strong style="color:#5c4a2a;font-size:12px;">🏯 年代分布</strong>`;
+    html += renderDistribution(a.era_distribution, ['#8b5a2b', '#c9b88e', '#5c4a2a', '#705729', '#b8860b']);
+
+    if (a.alias_evidence && a.alias_evidence.length) {
+        html += `<hr style="border:none;border-top:1px solid #e4d5b7;margin:8px 0;">`;
+        html += `<strong style="color:#5c4a2a;font-size:12px;">📖 异名对照证据</strong>`;
+        a.alias_evidence.forEach(ev => {
+            html += `<div class="evidence-source">
+                <span class="src-label">${ev.alias_name} ≡ ${ev.canonical_name}</span><br>
+                ${ev.source_literature ? `<span class="src-label">出处：</span>${ev.source_literature}<br>` : ''}
+                ${ev.evidence ? `<span class="src-label">证据：</span>${ev.evidence}` : ''}
+            </div>`;
+        });
+    }
+
+    if (a.related_disputes && a.related_disputes.length) {
+        html += `<hr style="border:none;border-top:1px solid #e4d5b7;margin:8px 0;">`;
+        html += `<strong style="color:#e67e22;font-size:12px;">⚖️ 关联争议 (${a.related_disputes.length})</strong>`;
+        a.related_disputes.forEach(d => {
+            html += `<div class="evidence-source" style="border-left-color:#e67e22;">
+                <span class="badge badge-type" style="background:#e67e22;">${d.type}</span>
+                <span class="badge badge-info">${d.status}</span><br>
+                <strong>${d.title}</strong> [${d.formula_no}]
+            </div>`;
+        });
+    }
+
+    if (a.related_annotations && a.related_annotations.length) {
+        html += `<hr style="border:none;border-top:1px solid #e4d5b7;margin:8px 0;">`;
+        html += `<strong style="color:#9b59b6;font-size:12px;">📝 相关学术注释 (${a.related_annotations.length})</strong>`;
+        a.related_annotations.forEach(an => {
+            html += `<div class="evidence-source" style="border-left-color:#9b59b6;">
+                <span class="badge badge-type" style="background:#9b59b6;">${an.type}</span><br>
+                <strong>${an.title}</strong> [${an.formula_no}]<br>
+                <small style="color:#7a6b55;">${an.content}...</small>
+            </div>`;
+        });
+    }
+
+    document.getElementById('detail-title').innerHTML = `<span class="badge badge-type" style="background:${NODE_COLORS.ingredient};">${NODE_LABELS.ingredient}</span> ${a.canonical_name}`;
+    document.getElementById('detail-content').innerHTML = html;
+
+    let relHtml = '';
+    if (a.literature_sources) {
+        relHtml += `<h4 style="margin:10px 0 6px 0;color:#5c4a2a;font-size:13px;border-bottom:1px solid #e4d5b7;padding-bottom:4px;">📚 文献出处 (${Object.keys(a.literature_sources).length})</h4>`;
+        Object.keys(a.literature_sources).forEach(lit => {
+            const occs = a.literature_sources[lit];
+            relHtml += `<div class="evidence-source">
+                <strong>${lit}</strong><br>
+                <small>涉及配方：${occs.map(o => `${o.formula_no}(${o.percentage}%)`).join('、')}</small>
+            </div>`;
+        });
+    }
+    if (a.occurrences && a.occurrences.length) {
+        relHtml += `<h4 style="margin:10px 0 6px 0;color:#5c4a2a;font-size:13px;border-bottom:1px solid #e4d5b7;padding-bottom:4px;">🧪 配方引用明细 (${a.occurrences.length})</h4>`;
+        relHtml += `<table class="usage-table"><thead><tr>
+            <th>配方编号</th><th>配方名称</th><th>名称</th><th>比例</th><th>年代</th><th>用途</th>
+        </tr></thead><tbody>`;
+        a.occurrences.forEach(o => {
+            relHtml += `<tr>
+                <td><a href="{% url 'formulas:formula_list' %}${o.formula_pk}/" class="link-btn" style="padding:1px 6px;">${o.formula_no}</a></td>
+                <td>${o.formula_name}</td>
+                <td>${o.name_in_formula}${o.chinese_name ? '(' + o.chinese_name + ')' : ''}</td>
+                <td><strong>${o.percentage}%</strong></td>
+                <td>${o.era || '-'}</td>
+                <td>${o.usage_category}</td>
+            </tr>`;
+        });
+        relHtml += '</tbody></table>';
+    }
+    document.getElementById('detail-relations').innerHTML = relHtml || '<div class="empty-hint">无关联信息</div>';
+
+    let evHtml = '';
+    if (a.alias_evidence && a.alias_evidence.length) {
+        evHtml += `<h4 style="margin:10px 0 6px 0;color:#5c4a2a;font-size:13px;border-bottom:1px solid #e4d5b7;padding-bottom:4px;">异名考证据</h4>`;
+        a.alias_evidence.forEach(ev => {
+            evHtml += `<div class="evidence-source">
+                <span class="src-label">对照：</span>${ev.alias_name} ≡ ${ev.canonical_name}<br>
+                ${ev.source_literature ? `<span class="src-label">文献来源：</span>${ev.source_literature}<br>` : ''}
+                ${ev.evidence ? `<span class="src-label">论证依据：</span>${ev.evidence}` : ''}
+            </div>`;
+        });
+    }
+    if (a.literature_sources) {
+        evHtml += `<h4 style="margin:10px 0 6px 0;color:#5c4a2a;font-size:13px;border-bottom:1px solid #e4d5b7;padding-bottom:4px;">文献引用证据链</h4>`;
+        Object.keys(a.literature_sources).forEach(lit => {
+            const occs = a.literature_sources[lit];
+            evHtml += `<div class="evidence-source">
+                <span class="src-label">📖 ${lit}</span><br>`;
+            occs.forEach(o => {
+                evHtml += `  → 配方 ${o.formula_no}《${o.formula_name}》 用量 ${o.percentage}% ${o.page ? '(p.' + o.page + ')' : ''}<br>`;
+            });
+            evHtml += `</div>`;
+        });
+    }
+    document.getElementById('detail-evidence').innerHTML = evHtml || '<div class="empty-hint">该成分暂无证据链记录</div>';
+}
+
+function renderDistribution(data, colors) {
+    if (!data || Object.keys(data).length === 0) {
+        return '<div style="padding:4px;font-size:11px;color:#7a6b55;">暂无数据</div>';
+    }
+    const total = Object.values(data).reduce((a, b) => a + b, 0);
+    const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
+    let bar = '<div class="distribution-bar">';
+    entries.forEach(([k, v], i) => {
+        const pct = (v / total * 100).toFixed(1);
+        const c = colors[i % colors.length];
+        bar += `<div style="width:${pct}%;background:${c};" title="${k}: ${v} (${pct}%)">${pct > 10 ? pct + '%' : ''}</div>`;
+    });
+    bar += '</div>';
+    bar += '<div class="distribution-legend">';
+    entries.forEach(([k, v], i) => {
+        const c = colors[i % colors.length];
+        const pct = (v / total * 100).toFixed(1);
+        bar += `<span><span class="dist-legend-color" style="background:${c};"></span>${k}: ${v} (${pct}%)</span>`;
+    });
+    bar += '</div>';
+    return bar;
+}
+
+function updateStatsDisplay(stats) {
+    document.getElementById('graph-stats-bar').textContent =
+        `节点: ${stats.total_nodes} | 关系: ${stats.total_edges}`;
+
+    let html = '';
+    Object.entries(stats.by_type || {}).forEach(([t, n]) => {
+        html += `<div class="detail-item">
+            <span class="label"><span class="legend-swatch" style="background:${NODE_COLORS[t]};"></span>${NODE_LABELS[t]}</span>
+            <span class="value"><strong>${n}</strong> 个</span>
+        </div>`;
+    });
+    html += `<hr style="border:none;border-top:1px solid #e4d5b7;margin:8px 0;">`;
+    html += `<div class="detail-item">
+        <span class="label">节点总数</span>
+        <span class="value"><strong style="font-size:16px;color:#8b6f3a;">${stats.total_nodes}</strong></span>
+    </div>`;
+    html += `<div class="detail-item">
+        <span class="label">关系总数</span>
+        <span class="value"><strong style="font-size:16px;color:#5c7a9e;">${stats.total_edges}</strong></span>
+    </div>`;
+    document.getElementById('graph-stats-detail').innerHTML = html;
+}
+
+function initGraphPhysics() {
+    const w = canvas.width, h = canvas.height;
+    const cx = w / 2, cy = h / 2;
+    graphNodes.forEach((n, i) => {
+        if (n.x === undefined) {
+            const angle = (i / graphNodes.length) * Math.PI * 2;
+            const radius = 150 + Math.min(graphNodes.length * 3, 250);
+            n.x = cx + Math.cos(angle) * radius + (Math.random() - 0.5) * 100;
+            n.y = cy + Math.sin(angle) * radius + (Math.random() - 0.5) * 100;
+        }
+        n.vx = 0;
+        n.vy = 0;
+    });
+    physicsRunning = true;
+}
+
+function stepPhysics() {
+    if (!physicsRunning) return;
+    const repulsion = 1200;
+    const attraction = 0.008;
+    const damping = 0.85;
+    const centerPull = 0.002;
+    const cx = canvas.width / 2, cy = canvas.height / 2;
+
+    for (let i = 0; i < graphNodes.length; i++) {
+        for (let j = i + 1; j < graphNodes.length; j++) {
+            const a = graphNodes[i], b = graphNodes[j];
+            const dx = a.x - b.x, dy = a.y - b.y;
+            let dist2 = dx * dx + dy * dy;
+            if (dist2 < 1) dist2 = 1;
+            const force = repulsion / dist2;
+            const dist = Math.sqrt(dist2);
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
+            a.vx += fx; a.vy += fy;
+            b.vx -= fx; b.vy -= fy;
+        }
+    }
+
+    graphEdges.forEach(e => {
+        const a = graphNodes.find(n => n.id === e.source);
+        const b = graphNodes.find(n => n.id === e.target);
+        if (!a || !b) return;
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const force = (dist - 120) * attraction;
+        const fx = (dx / dist) * force;
+        const fy = (dy / dist) * force;
+        a.vx += fx; a.vy += fy;
+        b.vx -= fx; b.vy -= fy;
+    });
+
+    graphNodes.forEach(n => {
+        if (n === draggingNode) return;
+        n.vx += (cx - n.x) * centerPull;
+        n.vy += (cy - n.y) * centerPull;
+        n.vx *= damping;
+        n.vy *= damping;
+        n.x += n.vx;
+        n.y += n.vy;
+        const s = (n.size || 10) * 1.5;
+        n.x = Math.max(s, Math.min(canvas.width - s, n.x));
+        n.y = Math.max(s, Math.min(canvas.height - s, n.y));
+    });
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
+    ctx.scale(scale, scale);
+
+    graphEdges.forEach(e => {
+        const a = graphNodes.find(n => n.id === e.source);
+        const b = graphNodes.find(n => n.id === e.target);
+        if (!a || !b) return;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.strokeStyle = e.style === 'dashed' ? '#c9b88e' : '#d8c8a8';
+        ctx.lineWidth = e.style === 'dashed' ? 1.5 : 1;
+        if (e.style === 'dashed') ctx.setLineDash([5, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        if (e.label && (a === selectedNode || b === selectedNode)) {
+            ctx.fillStyle = '#7a6b55';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+            const text = e.label.length > 12 ? e.label.slice(0, 10) + '..' : e.label;
+            ctx.fillText(text, mx, my - 4);
+        }
+    });
+
+    graphNodes.forEach(n => {
+        const s = (n.size || 10);
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, s, 0, Math.PI * 2);
+        ctx.fillStyle = n.color || '#888';
+        ctx.globalAlpha = selectedNode && n !== selectedNode ? 0.35 : 0.95;
+        if (n === selectedNode) {
+            ctx.globalAlpha = 1;
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#3a3020';
+            ctx.fill();
+            ctx.stroke();
+        } else {
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        if (s >= 9 || selectedNode === n) {
+            ctx.fillStyle = '#3a3020';
+            ctx.font = (s >= 14 ? '12px' : '10px') + ' sans-serif';
+            ctx.textAlign = 'center';
+            const label = n.label && n.label.length > 16 ? n.label.slice(0, 14) + '…' : (n.label || '');
+            ctx.fillText(label, n.x, n.y + s + 12);
+        }
+    });
+
+    ctx.restore();
+}
+
+function animate() {
+    stepPhysics();
+    draw();
+    requestAnimationFrame(animate);
+}
+animate();
+
+canvas.addEventListener('mousedown', e => {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left - offsetX) / scale;
+    const y = (e.clientY - rect.top - offsetY) / scale;
+    const hit = findNodeAt(x, y);
+    if (hit) {
+        draggingNode = hit;
+        selectNode(hit);
+    } else {
+        panning = true;
+    }
+    lastX = e.clientX;
+    lastY = e.clientY;
+});
+
+canvas.addEventListener('mousemove', e => {
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    if (draggingNode) {
+        draggingNode.x += dx / scale;
+        draggingNode.y += dy / scale;
+        draggingNode.vx = 0;
+        draggingNode.vy = 0;
+    } else if (panning) {
+        offsetX += dx;
+        offsetY += dy;
+    }
+    lastX = e.clientX;
+    lastY = e.clientY;
+});
+
+window.addEventListener('mouseup', () => {
+    draggingNode = null;
+    panning = false;
+});
+
+canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    scale = Math.max(0.3, Math.min(3, scale * delta));
+}, { passive: false });
+
+function findNodeAt(x, y) {
+    for (let i = graphNodes.length - 1; i >= 0; i--) {
+        const n = graphNodes[i];
+        const s = (n.size || 10) + 4;
+        const dx = x - n.x, dy = y - n.y;
+        if (dx * dx + dy * dy <= s * s) return n;
+    }
+    return null;
+}
+
+function selectNode(node) {
+    selectedNode = node;
+    renderNodeDetail(node);
+    renderNodeRelations(node);
+    renderNodeEvidence(node);
+}
+
+function clearDetail() {
+    document.getElementById('detail-title').textContent = '节点详情';
+    document.getElementById('detail-content').innerHTML = '<div class="empty-hint">点击图谱中的节点以查看详细信息</div>';
+    document.getElementById('detail-relations').innerHTML = '<div class="empty-hint">选择节点后显示关联关系</div>';
+    document.getElementById('detail-evidence').innerHTML = '<div class="empty-hint">选择节点后显示证据链信息</div>';
+}
+
+function renderNodeDetail(n) {
+    const d = n.data || {};
+    let html = '';
+    Object.entries(d).forEach(([k, v]) => {
+        if (typeof v === 'object' || k === 'usages' || k === 'aliases') return;
+        const label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        if (v === null || v === undefined || v === '') return;
+        html += `<div class="detail-item"><span class="label">${label}</span><span class="value">${v}</span></div>`;
+    });
+    if (d.aliases && d.aliases.length) {
+        html += `<div class="detail-item"><span class="label">异名/古称</span><span class="value">${d.aliases.map(a => `<span class="badge badge-info">${a}</span>`).join(' ')}</span></div>`;
+    }
+    if (d.usages && d.usages.length) {
+        html += `<div class="detail-item"><span class="label">引用次数</span><span class="value"><strong style="color:#4cae4c;font-size:15px;">${d.usages.length}</strong> 个配方</span></div>`;
+        const pcts = d.usages.map(u => u.percentage).filter(p => p > 0);
+        if (pcts.length) {
+            html += `<div class="detail-item"><span class="label">比例区间</span><span class="value">${Math.min(...pcts)}% ~ ${Math.max(...pcts)}%</span></div>`;
+        }
+    }
+
+    const typeBadge = `<span class="badge badge-type" style="background:${n.color || NODE_COLORS[n.type]};">${NODE_LABELS[n.type] || n.type}</span>`;
+    document.getElementById('detail-title').innerHTML = typeBadge + ' ' + (n.full_label || n.label);
+    document.getElementById('detail-content').innerHTML = html || '<div class="empty-hint">暂无详细属性</div>';
+}
+
+function renderNodeRelations(n) {
+    const related = [];
+    graphEdges.forEach(e => {
+        if (e.source === n.id) {
+            const t = graphNodes.find(x => x.id === e.target);
+            if (t) related.push({ node: t, direction: '→', edge: e });
+        } else if (e.target === n.id) {
+            const s = graphNodes.find(x => x.id === e.source);
+            if (s) related.push({ node: s, direction: '←', edge: e });
+        }
+    });
+
+    if (!related.length) {
+        document.getElementById('detail-relations').innerHTML = '<div class="empty-hint">此节点无关联关系</div>';
+        return;
+    }
+
+    let html = '<div style="max-height:300px;overflow-y:auto;">';
+    related.forEach(r => {
+        const rn = r.node;
+        html += `<div style="padding:6px;margin:4px 0;background:#fff;border:1px solid #e4d5b7;border-radius:4px;cursor:pointer;"
+                onclick="focusNode('${rn.id}')">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span>
+                    <span class="legend-swatch" style="background:${rn.color};"></span>
+                    <strong>${rn.label}</strong>
+                    <small style="color:#7a6b55;">(${NODE_LABELS[rn.type] || rn.type})</small>
+                </span>
+                <small style="color:#8b6f3a;">${r.direction} ${r.edge.label || ''}</small>
+            </div>`;
+        if (r.edge.data) {
+            const ed = r.edge.data;
+            if (ed.percentage !== undefined) {
+                html += `<div style="font-size:11px;color:#5c4a2a;margin-top:2px;padding-left:14px;">
+                    比例: <strong>${ed.percentage}%</strong>${ed.name_in_formula ? ` · 配方中称: ${ed.name_in_formula}` : ''}${ed.chinese_name ? `(${ed.chinese_name})` : ''}
+                </div>`;
+            }
+            if (ed.page) {
+                html += `<div style="font-size:11px;color:#5c4a2a;margin-top:2px;padding-left:14px;">页码: p.${ed.page}</div>`;
+            }
+        }
+        const rd = rn.data || {};
+        if (rd.formula_no || rd.publication_year || rd.region) {
+            html += `<div style="font-size:10px;color:#7a6b55;margin-top:2px;padding-left:14px;">`;
+            if (rd.formula_no) html += `#${rd.formula_no} `;
+            if (rd.era || rd.dynasty) html += `· ${rd.era || rd.dynasty} `;
+            if (rd.region) html += `· ${rd.region}`;
+            html += `</div>`;
+        }
+        html += '</div>';
+    });
+    html += '</div>';
+    html += `<div style="margin-top:8px;text-align:center;">
+        <small style="color:#7a6b55;">共 ${related.length} 条关联 · 点击条目可在图谱中跳转</small>
+    </div>`;
+    document.getElementById('detail-relations').innerHTML = html;
+}
+
+function renderNodeEvidence(n) {
+    const d = n.data || {};
+    let html = '';
+
+    if (n.type === 'literature') {
+        html += `<div class="evidence-source">
+            <span class="src-label">📖 文献来源</span><br>
+            <strong>${d.title || n.label}</strong><br>
+            ${d.author ? `作者: ${d.author}<br>` : ''}
+            ${d.publication_year ? `刊行年代: ${d.publication_year}年<br>` : ''}
+            ${d.dynasty ? `朝代/时期: ${d.dynasty}<br>` : ''}
+            ${d.source_type ? `文献类型: ${d.source_type}` : ''}
+        </div>`;
+    }
+
+    if (n.type === 'formula') {
+        html += `<div class="evidence-source">
+            <span class="src-label">📄 配方档案</span><br>
+            配方编号: <strong>${d.formula_no}</strong><br>
+            ${d.alias ? `别名: ${d.alias}<br>` : ''}
+            ${d.era ? `所属年代: ${d.era}<br>` : ''}
+            ${d.region ? `来源地区: ${d.region}<br>` : ''}
+            ${d.usage_category ? `用途: ${d.usage_category}<br>` : ''}
+            安全等级: <span class="badge badge-info">${d.safety_level}</span>
+            评审状态: <span class="badge badge-info">${d.review_status}</span>
+        </div>`;
+        if (d.pk) {
+            html += `<a href="{% url 'formulas:formula_list' %}${d.pk}/" target="_blank" class="link-btn">→ 查看配方完整档案</a>`;
+        }
+    }
+
+    if (n.type === 'ingredient') {
+        if (d.aliases && d.aliases.length) {
+            html += `<div class="evidence-source" style="border-left-color:#4cae4c;">
+                <span class="src-label">🔤 异名/古称</span><br>
+                ${d.aliases.map(a => `<span class="badge badge-info">${a}</span>`).join(' ')}
+            </div>`;
+        }
+        if (d.usages && d.usages.length) {
+            html += `<div class="evidence-source" style="border-left-color:#5c7a9e;">
+                <span class="src-label">📚 文献引用证据</span><br>
+                <strong>${d.usages.length}</strong> 个配方引用<br>`;
+            const byLit = {};
+            d.usages.slice(0, 10).forEach(u => {
+                const key = u.literature_title || '出处未详';
+                if (!byLit[key]) byLit[key] = [];
+                byLit[key].push(u);
+            });
+            Object.entries(byLit).forEach(([lit, us]) => {
+                html += `<div style="margin-top:4px;padding-left:10px;border-left:2px solid #c9b88e;">
+                    <strong>${lit}</strong><br>
+                    ${us.map(u => `${u.formula_no}《${u.formula_name}》: ${u.percentage}%`).join('<br>')}
+                </div>`;
+            });
+            if (d.usages.length > 10) html += `<small style="color:#7a6b55;">... 共 ${d.usages.length} 处引用</small>`;
+            html += '</div>';
+        }
+    }
+
+    if (n.type === 'annotation') {
+        html += `<div class="evidence-source" style="border-left-color:#9b59b6;">
+            <span class="src-label">📝 注释内容</span><br>
+            类型: <span class="badge badge-type" style="background:#9b59b6;">${d.annotation_type || ''}</span><br>
+            <strong>${d.title}</strong><br>
+            <div style="margin-top:4px;padding:4px 8px;background:#fff;border-radius:3px;font-size:12px;line-height:1.6;">${(d.content || '').slice(0, 300)}${d.content && d.content.length > 300 ? '...' : ''}</div>
+            ${d.reference ? `<br><span class="src-label">依据文献:</span> ${d.reference}${d.reference_page ? ' (p.' + d.reference_page + ')' : ''}` : ''}<br>
+            ${d.created_by ? `<span class="src-label">注释人:</span> ${d.created_by} · ${d.created_at || ''}` : ''}
+        </div>`;
+        if (d.pk) html += `<a href="{% url 'formulas:annotation_list' %}${d.pk}/" target="_blank" class="link-btn">→ 查看完整注释</a>`;
+    }
+
+    if (n.type === 'dispute') {
+        html += `<div class="evidence-source" style="border-left-color:#e67e22;">
+            <span class="src-label">⚖️ 争议主题</span><br>
+            类型: <span class="badge badge-type" style="background:#e67e22;">${d.dispute_type || ''}</span>
+            状态: <span class="badge badge-info">${d.status || ''}</span><br>
+            <strong>${d.title}</strong><br>
+            <div style="margin-top:4px;padding:4px 8px;background:#fff;border-radius:3px;font-size:12px;line-height:1.6;">${(d.description || '').slice(0, 250)}${d.description && d.description.length > 250 ? '...' : ''}</div>
+            ${d.argument_count ? `<br><span class="src-label">观点数:</span> ${d.argument_count} 条` : ''}
+            ${d.conclusion ? `<br><span class="src-label">结论:</span> ${d.conclusion.slice(0, 150)}` : ''}<br>
+            ${d.initiated_by ? `<span class="src-label">发起人:</span> ${d.initiated_by} · ${d.initiated_at || ''}` : ''}
+        </div>`;
+        if (d.pk) html += `<a href="{% url 'formulas:dispute_list' %}${d.pk}/" target="_blank" class="link-btn">→ 查看争议详情</a>`;
+    }
+
+    if (n.type === 'review') {
+        html += `<div class="evidence-source" style="border-left-color:#c0392b;">
+            <span class="src-label">🛡️ 安全评审记录</span><br>
+            结果: <span class="badge badge-type" style="background:#c0392b;">${d.result || d.review_result || ''}</span><br>
+            ${d.reviewer ? `评审人: ${d.reviewer}<br>` : ''}
+            ${d.reviewed_at ? `评审时间: ${d.reviewed_at}<br>` : ''}
+            ${d.opinion ? `<div style="margin-top:4px;padding:4px 8px;background:#fff;border-radius:3px;"><span class="src-label">评审意见:</span><br>${d.opinion.slice(0, 200)}${d.opinion.length > 200 ? '...' : ''}</div>` : ''}
+            ${d.risk_analysis ? `<div style="margin-top:4px;padding:4px 8px;background:#fff8e8;border-radius:3px;"><span class="src-label">风险分析:</span><br>${d.risk_analysis.slice(0, 200)}${d.risk_analysis.length > 200 ? '...' : ''}</div>` : ''}
+        </div>`;
+    }
+
+    document.getElementById('detail-evidence').innerHTML = html || '<div class="empty-hint">此节点暂无证据源记录</div>';
+}
+
+function renderTimeline(events) {
+    const panel = document.getElementById('timeline-list');
+    if (!events || !events.length) {
+        panel.innerHTML = '<div class="empty-hint">暂无时间线事件</div>';
+        return;
+    }
+    let html = '';
+    events.forEach(ev => {
+        html += `<div class="timeline-item type-${ev.type || 'default'}">
+            <div class="date">📅 ${ev.date || '日期不详'}</div>
+            <div class="t-title">${ev.title || ''}</div>
+            <div class="t-desc">${ev.description || ''}</div>
+            ${ev.formula_pk ? `<div style="margin-top:4px;"><a href="{% url 'formulas:formula_list' %}${ev.formula_pk}/" target="_blank" class="link-btn" style="padding:1px 6px;">→ 查看配方</a></div>` : ''}
+        </div>`;
+    });
+    panel.innerHTML = html;
+}
+
+function focusNode(nodeId) {
+    const n = graphNodes.find(x => x.id === nodeId);
+    if (!n) return;
+    selectedNode = n;
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    offsetX = cx - n.x * scale;
+    offsetY = cy - n.y * scale;
+    renderNodeDetail(n);
+    renderNodeRelations(n);
+    renderNodeEvidence(n);
+}
+
+function zoomIn() { scale = Math.min(3, scale * 1.2); }
+function zoomOut() { scale = Math.max(0.3, scale / 1.2); }
+function resetView() {
+    scale = 1;
+    offsetX = 0;
+    offsetY = 0;
+    initGraphPhysics();
+}
+function togglePhysics() {
+    physicsRunning = !physicsRunning;
+    document.querySelectorAll('.btn-graph.danger')[0].textContent = physicsRunning ? '⏸ 暂停' : '▶ 运行';
+}
+function showLoading(s) {
+    document.getElementById('loading-overlay').style.display = s ? 'flex' : 'none';
+}
+function resetFilters() {
+    document.getElementById('filter-dynasty').value = '';
+    document.getElementById('filter-region').value = '';
+    document.getElementById('filter-ingredient-name').value = '';
+    document.getElementById('filter-dispute-type').value = '';
+    document.getElementById('filter-trace-formula').value = '';
+    document.querySelectorAll('.node-type-chip').forEach(c => {
+        c.classList.add('active');
+        c.classList.remove('inactive');
+    });
+    applyFilters();
+}
+function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === tab);
+    });
+    document.querySelectorAll('.tab-content').forEach(c => {
+        c.classList.toggle('active', c.id === 'tab-' + tab);
+    });
+}
+
+document.getElementById('filter-trace-formula').addEventListener('change', e => {
+    if (currentView === 'trace' && e.target.value) applyFilters();
+});
+
+const INITIAL_VIEW = '{{ initial_view|escapejs }}';
+window.addEventListener('load', () => {
+    showLoading(true);
+    setTimeout(() => {
+        if (INITIAL_VIEW && INITIAL_VIEW !== 'global') {
+            switchView(INITIAL_VIEW);
+        } else {
+            applyFilters();
+        }
+    }, 300);
+});
+</script>
+{% endblock %}
