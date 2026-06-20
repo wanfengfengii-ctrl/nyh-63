@@ -1,0 +1,33 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}{{ title }} - 历史火药配方文献管理系统{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+    <a href="{% url 'formulas:literature_list' %}" class="btn btn-secondary btn-sm">← 返回文献列表</a>
+</div>
+
+<div class="page-header">
+    <h2>{{ title }}</h2>
+    <p>请填写文献信息</p>
+</div>
+
+<form method="post" class="form-card">
+    {% csrf_token %}
+    <div class="form-grid">
+        {% for field in form %}
+        <div class="form-group {% if field.name == 'remark' %}full-width{% endif %}">
+            {{ field.label_tag }}
+            {{ field }}
+            {% if field.errors %}
+            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ field.errors.0 }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">保存</button>
+        <a href="{% url 'formulas:literature_list' %}" class="btn btn-secondary">取消</a>
+    </div>
+</form>
+{% endblock %}

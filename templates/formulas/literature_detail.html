@@ -1,0 +1,86 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}{{ literature.title }} - 文献详情{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+    <a href="{% url 'formulas:literature_list' %}" class="btn btn-secondary btn-sm">← 返回文献列表</a>
+</div>
+
+<div class="detail-card">
+    <div class="detail-header">
+        <h2>{{ literature.title }}</h2>
+        <div class="meta">
+            类型：{{ literature.get_source_type_display }}
+            {% if literature.publication_year %} · {{ literature.publication_year }}年{% endif %}
+            {% if literature.dynasty %} · {{ literature.dynasty }}{% endif %}
+        </div>
+    </div>
+    <div class="detail-body">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="label">作者/编纂者</span>
+                <span class="value">{{ literature.author|default:"-" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">出版/刊行年代</span>
+                <span class="value">{{ literature.publication_year|default:"-" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">朝代/时期</span>
+                <span class="value">{{ literature.dynasty|default:"-" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">来源地区</span>
+                <span class="value">{{ literature.region|default:"-" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">出版机构/馆藏</span>
+                <span class="value">{{ literature.publisher|default:"-" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">索书号/编号</span>
+                <span class="value">{{ literature.call_number|default:"-" }}</span>
+            </div>
+        </div>
+        {% if literature.remark %}
+        <div class="detail-section">
+            <h3>备注</h3>
+            <p style="font-size:14px;">{{ literature.remark|linebreaksbr }}</p>
+        </div>
+        {% endif %}
+
+        <div class="detail-section">
+            <h3>引用此文献的配方（{{ formulas|length }} 条）</h3>
+            {% if formulas %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>配方编号</th>
+                        <th>名称</th>
+                        <th>年代</th>
+                        <th>安全等级</th>
+                        <th>评审状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in formulas %}
+                    <tr>
+                        <td><strong>{{ f.formula_no }}</strong></td>
+                        <td>{{ f.name }}</td>
+                        <td>{{ f.era|default:"-" }}</td>
+                        <td><span class="badge badge-{{ f.safety_level }}">{{ f.get_safety_level_display }}</span></td>
+                        <td><span class="badge badge-{{ f.review_status }}">{{ f.get_review_status_display }}</span></td>
+                        <td><a href="{% url 'formulas:formula_detail' f.pk %}" class="btn btn-sm btn-secondary">查看</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color:#7a6b55; font-size:14px;">暂无引用此文献的配方。</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

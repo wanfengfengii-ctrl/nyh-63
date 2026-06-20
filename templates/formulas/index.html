@@ -1,0 +1,102 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}首页 - 历史火药配方文献管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>系统概览</h2>
+    <p>记录历史火药配方文献、成分比例和实验安全评审</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ total_formulas }}</div>
+        <div class="stat-label">配方总数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ total_literatures }}</div>
+        <div class="stat-label">文献来源</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ pending_reviews }}</div>
+        <div class="stat-label">待评审配方</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ high_risk }}</div>
+        <div class="stat-label">高风险配方</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ archived }}</div>
+        <div class="stat-label">已归档配方</div>
+    </div>
+</div>
+
+<div class="section-title">最近录入的配方</div>
+{% if recent_formulas %}
+<table>
+    <thead>
+        <tr>
+            <th>配方编号</th>
+            <th>名称</th>
+            <th>年代</th>
+            <th>来源地区</th>
+            <th>用途</th>
+            <th>安全等级</th>
+            <th>评审状态</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for f in recent_formulas %}
+        <tr>
+            <td><strong>{{ f.formula_no }}</strong></td>
+            <td>{{ f.name }}</td>
+            <td>{{ f.era|default:"-" }}</td>
+            <td>{{ f.region|default:"-" }}</td>
+            <td>{{ f.get_usage_category_display }}</td>
+            <td><span class="badge badge-{{ f.safety_level }}">{{ f.get_safety_level_display }}</span></td>
+            <td><span class="badge badge-{{ f.review_status }}">{{ f.get_review_status_display }}</span></td>
+            <td><a href="{% url 'formulas:formula_detail' f.pk %}" class="btn btn-sm btn-secondary">查看</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <p>暂无配方数据。</p>
+    {% if user.is_authenticated %}
+    <p><a href="{% url 'formulas:formula_create' %}" class="btn btn-primary">新建第一个配方</a></p>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="section-title">快速入口</div>
+<div class="stats-grid">
+    <a href="{% url 'formulas:formula_list' %}" class="stat-card" style="text-decoration:none;">
+        <div class="stat-value" style="font-size:20px;">📋</div>
+        <div class="stat-label">浏览所有配方</div>
+    </a>
+    <a href="{% url 'formulas:literature_list' %}" class="stat-card" style="text-decoration:none;">
+        <div class="stat-value" style="font-size:20px;">📚</div>
+        <div class="stat-label">文献来源管理</div>
+    </a>
+    <a href="{% url 'formulas:statistics' %}" class="stat-card" style="text-decoration:none;">
+        <div class="stat-value" style="font-size:20px;">📊</div>
+        <div class="stat-label">统计分布分析</div>
+    </a>
+    {% if user.is_authenticated %}
+    <a href="{% url 'formulas:formula_create' %}" class="stat-card" style="text-decoration:none;">
+        <div class="stat-value" style="font-size:20px;">➕</div>
+        <div class="stat-label">添加新配方</div>
+    </a>
+    <a href="{% url 'formulas:literature_create' %}" class="stat-card" style="text-decoration:none;">
+        <div class="stat-value" style="font-size:20px;">📖</div>
+        <div class="stat-label">添加新文献</div>
+    </a>
+    <a href="/admin/" class="stat-card" style="text-decoration:none;">
+        <div class="stat-value" style="font-size:20px;">⚙️</div>
+        <div class="stat-label">管理后台</div>
+    </a>
+    {% endif %}
+</div>
+{% endblock %}

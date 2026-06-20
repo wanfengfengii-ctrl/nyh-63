@@ -1,0 +1,55 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}文献来源 - 历史火药配方文献管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>文献来源</h2>
+    <p>记录所有配方引用的历史文献和档案资料</p>
+</div>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <p style="color:#7a6b55; font-size:14px;">共 <strong>{{ literatures|length }}</strong> 条文献记录</p>
+    {% if user.is_authenticated %}
+    <a href="{% url 'formulas:literature_create' %}" class="btn btn-primary">添加文献</a>
+    {% endif %}
+</div>
+
+{% if literatures %}
+<table>
+    <thead>
+        <tr>
+            <th>标题</th>
+            <th>作者</th>
+            <th>年代</th>
+            <th>朝代</th>
+            <th>来源地区</th>
+            <th>类型</th>
+            <th>配方数</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for lit in literatures %}
+        <tr>
+            <td><strong>{{ lit.title }}</strong></td>
+            <td>{{ lit.author|default:"-" }}</td>
+            <td>{{ lit.publication_year|default:"-" }}</td>
+            <td>{{ lit.dynasty|default:"-" }}</td>
+            <td>{{ lit.region|default:"-" }}</td>
+            <td>{{ lit.get_source_type_display }}</td>
+            <td>{{ lit.formulas.count }}</td>
+            <td><a href="{% url 'formulas:literature_detail' lit.pk %}" class="btn btn-sm btn-secondary">查看</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <p>暂无文献记录。</p>
+    {% if user.is_authenticated %}
+    <p><a href="{% url 'formulas:literature_create' %}" class="btn btn-primary">添加第一篇文献</a></p>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,146 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}{{ formula.name }} - 配方详情{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+    <a href="{% url 'formulas:formula_list' %}" class="btn btn-secondary btn-sm">← 返回列表</a>
+    {% if user.is_authenticated %}
+    <a href="{% url 'formulas:formula_edit' formula.pk %}" class="btn btn-primary btn-sm" style="margin-left:8px;">编辑配方</a>
+    {% endif %}
+</div>
+
+<div class="detail-card">
+    <div class="detail-header">
+        <h2>{{ formula.formula_no }} - {{ formula.name }}</h2>
+        <div class="meta">
+            {% if formula.alias %}别名：{{ formula.alias }} · {% endif %}
+            录入时间：{{ formula.created_at|date:"Y-m-d H:i" }}
+            {% if formula.created_by %}· 录入人：{{ formula.created_by.username }}{% endif %}
+        </div>
+        <div style="margin-top:8px;">
+            <span class="badge badge-{{ formula.safety_level }}">{{ formula.get_safety_level_display }}</span>
+            <span class="badge badge-{{ formula.review_status }}" style="margin-left:6px;">{{ formula.get_review_status_display }}</span>
+            <span class="badge badge-{{ formula.archive_status }}" style="margin-left:6px;">{{ formula.get_archive_status_display }}</span>
+        </div>
+    </div>
+    <div class="detail-body">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="label">文献出处</span>
+                <span class="value">
+                    {% if formula.literature %}
+                        <a href="{% url 'formulas:literature_detail' formula.literature.pk %}">{{ formula.literature.title }}</a>
+                        {% if formula.literature_page %} · 第{{ formula.literature_page }}页{% endif %}
+                    {% else %}
+                        <em style="color:#a33;">未填写</em>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="detail-item">
+                <span class="label">年代</span>
+                <span class="value">{{ formula.era|default:"-" }}{% if formula.era_year %}（{{ formula.era_year }}年）{% endif %}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">来源地区</span>
+                <span class="value">{{ formula.region|default:"-" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">用途分类</span>
+                <span class="value">{{ formula.get_usage_category_display }}</span>
+            </div>
+        </div>
+
+        {% if formula.description %}
+        <div class="detail-section">
+            <h3>配方描述</h3>
+            <p style="font-size:14px; line-height:1.8;">{{ formula.description|linebreaksbr }}</p>
+        </div>
+        {% endif %}
+
+        <div class="detail-section">
+            <h3>成分比例 <small style="color:#7a6b55; font-weight:normal;">（合计：{{ formula.total_percentage }}%）</small></h3>
+            {% if ingredients %}
+            <ul class="ingredient-list">
+                {% for ing in ingredients %}
+                <li class="ingredient-item">
+                    <div class="ingredient-head">
+                        <span class="ingredient-name">
+                            {{ ing.name }}
+                            {% if ing.chinese_name %}<small>（{{ ing.chinese_name }}）</small>{% endif %}
+                        </span>
+                        <span class="ingredient-pct">{{ ing.percentage }}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:{{ ing.percentage }}%;"></div>
+                    </div>
+                    {% if ing.remark %}
+                    <div style="font-size:12px; color:#7a6b55; margin-top:4px;">{{ ing.remark }}</div>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p style="color:#7a6b55; font-size:14px;">暂未录入成分。</p>
+            {% endif %}
+        </div>
+
+        {% if formula.safety_note %}
+        <div class="detail-section">
+            <h3>安全说明</h3>
+            <p style="font-size:14px; line-height:1.8; padding:12px; background:#fff8e1; border-radius:5px;">{{ formula.safety_note|linebreaksbr }}</p>
+        </div>
+        {% endif %}
+
+        <div class="detail-section">
+            <h3>安全评审记录</h3>
+            {% if reviews %}
+            {% for review in reviews %}
+            <div class="review-item">
+                <div class="review-head">
+                    <span>评审人：{{ review.reviewer.username|default:"系统" }}</span>
+                    <span>{{ review.reviewed_at|date:"Y-m-d H:i" }}</span>
+                </div>
+                <div style="margin-bottom:8px;">
+                    <span class="badge badge-{% if review.review_result == 'approved' %}approved{% elif review.review_result == 'rejected' %}rejected{% else %}recheck{% endif %}">
+                        {{ review.get_review_result_display }}
+                    </span>
+                </div>
+                {% if review.opinion %}
+                <p style="font-size:14px;"><strong>评审意见：</strong>{{ review.opinion|linebreaksbr }}</p>
+                {% endif %}
+                {% if review.risk_analysis %}
+                <p style="font-size:14px; margin-top:6px;"><strong>风险分析：</strong>{{ review.risk_analysis|linebreaksbr }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <p style="color:#7a6b55; font-size:14px;">暂无评审记录。</p>
+            {% endif %}
+
+            {% if user.is_authenticated %}
+            <div style="margin-top:20px; padding-top:16px; border-top:1px solid #e8dfc8;">
+                <h4 style="color:#4a3728; margin-bottom:12px; font-size:15px;">提交新评审</h4>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="form-grid">
+                        {% for field in review_form %}
+                        <div class="form-group {% if field.name != 'review_result' %}full-width{% endif %}">
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% if field.errors %}
+                            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ field.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">提交评审</button>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

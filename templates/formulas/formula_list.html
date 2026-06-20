@@ -1,0 +1,79 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}配方列表 - 历史火药配方文献管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>配方列表</h2>
+    <p>按年代、来源地区、用途分类等条件筛选配方</p>
+</div>
+
+<form class="filter-form" method="get">
+    <div class="filter-grid">
+        {% for field in form %}
+        <div class="form-group">
+            {{ field.label_tag }}
+            {{ field }}
+        </div>
+        {% endfor %}
+    </div>
+    <div style="display:flex; gap:10px;">
+        <button type="submit" class="btn btn-primary">筛选</button>
+        <a href="{% url 'formulas:formula_list' %}" class="btn btn-secondary">重置</a>
+    </div>
+</form>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <p style="color:#7a6b55; font-size:14px;">共 <strong>{{ formulas|length }}</strong> 条记录</p>
+    {% if user.is_authenticated %}
+    <a href="{% url 'formulas:formula_create' %}" class="btn btn-primary">新建配方</a>
+    {% endif %}
+</div>
+
+{% if formulas %}
+<table>
+    <thead>
+        <tr>
+            <th>配方编号</th>
+            <th>名称</th>
+            <th>年代</th>
+            <th>来源地区</th>
+            <th>用途</th>
+            <th>安全等级</th>
+            <th>评审状态</th>
+            <th>归档</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for f in formulas %}
+        <tr>
+            <td><strong>{{ f.formula_no }}</strong></td>
+            <td>
+                {{ f.name }}
+                {% if f.alias %}<br><small style="color:#999;">别名：{{ f.alias }}</small>{% endif %}
+            </td>
+            <td>{{ f.era|default:"-" }}</td>
+            <td>{{ f.region|default:"-" }}</td>
+            <td>{{ f.get_usage_category_display }}</td>
+            <td><span class="badge badge-{{ f.safety_level }}">{{ f.get_safety_level_display }}</span></td>
+            <td><span class="badge badge-{{ f.review_status }}">{{ f.get_review_status_display }}</span></td>
+            <td><span class="badge badge-{{ f.archive_status }}">{{ f.get_archive_status_display }}</span></td>
+            <td>
+                <div class="action-links">
+                    <a href="{% url 'formulas:formula_detail' f.pk %}" class="btn btn-sm btn-secondary">查看</a>
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'formulas:formula_edit' f.pk %}" class="btn btn-sm btn-primary">编辑</a>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <p>没有找到符合条件的配方。</p>
+</div>
+{% endif %}
+{% endblock %}

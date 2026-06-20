@@ -1,0 +1,39 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}登录 - 历史火药配方文献管理系统{% endblock %}
+
+{% block content %}
+<div class="login-box">
+    <h2>系统登录</h2>
+    {% if form.errors %}
+    <div class="message message-error">
+        用户名或密码错误，请重试。
+    </div>
+    {% endif %}
+    {% if next %}
+    <div class="message message-warning">
+        {% if user.is_authenticated %}
+        您的账户没有访问该页面的权限。
+        {% else %}
+        请登录后访问该页面。
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'login' %}">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="id_username">用户名</label>
+            <input type="text" name="username" id="id_username" class="form-control" autofocus required>
+        </div>
+        <div class="form-group">
+            <label for="id_password">密码</label>
+            <input type="password" name="password" id="id_password" class="form-control" required>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary" style="width:100%;">登录</button>
+        </div>
+        <input type="hidden" name="next" value="{{ next }}">
+    </form>
+</div>
+{% endblock %}

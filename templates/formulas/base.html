@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}历史火药配方文献管理系统{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container header-inner">
+            <h1 class="site-title">
+                <a href="{% url 'formulas:index' %}">历史火药配方文献管理系统</a>
+            </h1>
+            <nav class="site-nav">
+                <ul>
+                    <li><a href="{% url 'formulas:index' %}">首页</a></li>
+                    <li><a href="{% url 'formulas:formula_list' %}">配方列表</a></li>
+                    <li><a href="{% url 'formulas:literature_list' %}">文献来源</a></li>
+                    <li><a href="{% url 'formulas:statistics' %}">统计分布</a></li>
+                    {% if user.is_authenticated %}
+                        <li><a href="{% url 'formulas:formula_create' %}">新建配方</a></li>
+                        <li><a href="{% url 'formulas:literature_create' %}">添加文献</a></li>
+                        <li><a href="/admin/">管理后台</a></li>
+                        <li class="user-info">{{ user.username }} | <a href="{% url 'logout' %}">退出</a></li>
+                    {% else %}
+                        <li><a href="{% url 'login' %}">登录</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="site-main">
+        <div class="container">
+            {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                <div class="message message-{{ message.tags }}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <p class="footer-disclaimer">
+                <strong>声明：</strong>本系统仅用于博物馆和科研团队记录历史火药配方文献、
+                成分比例及实验安全评审，不提供任何实际制造指导或操作建议。
+            </p>
+            <p class="copyright">&copy; 2024 历史火药配方文献档案</p>
+        </div>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

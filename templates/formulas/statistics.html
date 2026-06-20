@@ -1,0 +1,145 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}统计分布 - 历史火药配方文献管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>统计分布</h2>
+    <p>查看配方按用途、安全等级、地区及成分的统计分布</p>
+</div>
+
+<div class="stats-grid" style="margin-bottom:24px;">
+    <div class="stat-card">
+        <div class="stat-value">{{ total_count }}</div>
+        <div class="stat-label">配方总数</div>
+    </div>
+</div>
+
+<div class="two-col">
+    <div>
+        <div class="section-title">按用途分类</div>
+        <div class="detail-card" style="padding:20px;">
+            {% for item in usage_stats %}
+            <div class="stat-chart-bar">
+                <div class="stat-row">
+                    <span class="name">
+                        {% if item.usage_category == 'military' %}军用
+                        {% elif item.usage_category == 'fireworks' %}烟花
+                        {% elif item.usage_category == 'mining' %}采矿
+                        {% elif item.usage_category == 'signal' %}信号
+                        {% elif item.usage_category == 'medical' %}医用
+                        {% else %}其他{% endif %}
+                    </span>
+                    <span class="count">{{ item.count }} 条</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:{% widthratio item.count total_count 100 %}%;"></div>
+                </div>
+            </div>
+            {% empty %}
+            <p style="color:#7a6b55;">暂无数据</p>
+            {% endfor %}
+        </div>
+
+        <div class="section-title">按安全等级</div>
+        <div class="detail-card" style="padding:20px;">
+            {% for item in safety_stats %}
+            <div class="stat-chart-bar">
+                <div class="stat-row">
+                    <span class="name">
+                        {% if item.safety_level == 'low' %}低风险
+                        {% elif item.safety_level == 'medium' %}中风险
+                        {% else %}高风险{% endif %}
+                    </span>
+                    <span class="count">{{ item.count }} 条</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:{% widthratio item.count total_count 100 %}%;"></div>
+                </div>
+            </div>
+            {% empty %}
+            <p style="color:#7a6b55;">暂无数据</p>
+            {% endfor %}
+        </div>
+
+        <div class="section-title">按评审状态</div>
+        <div class="detail-card" style="padding:20px;">
+            {% for item in review_stats %}
+            <div class="stat-chart-bar">
+                <div class="stat-row">
+                    <span class="name">
+                        {% if item.review_status == 'draft' %}草稿
+                        {% elif item.review_status == 'pending' %}待评审
+                        {% elif item.review_status == 'recheck' %}待复核
+                        {% elif item.review_status == 'approved' %}评审通过
+                        {% else %}评审驳回{% endif %}
+                    </span>
+                    <span class="count">{{ item.count }} 条</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:{% widthratio item.count total_count 100 %}%;"></div>
+                </div>
+            </div>
+            {% empty %}
+            <p style="color:#7a6b55;">暂无数据</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div>
+        <div class="section-title">按来源地区（前10）</div>
+        <div class="detail-card" style="padding:20px;">
+            {% for item in region_stats %}
+            <div class="stat-chart-bar">
+                <div class="stat-row">
+                    <span class="name">{{ item.region }}</span>
+                    <span class="count">{{ item.count }} 条</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:{% widthratio item.count total_count 100 %}%;"></div>
+                </div>
+            </div>
+            {% empty %}
+            <p style="color:#7a6b55;">暂无数据</p>
+            {% endfor %}
+        </div>
+
+        <div class="section-title">高频成分（前15）</div>
+        <div class="detail-card" style="padding:20px;">
+            {% for item in ingredient_stats %}
+            <div class="stat-chart-bar">
+                <div class="stat-row">
+                    <span class="name">{{ item.name }}</span>
+                    <span class="count">出现 {{ item.count }} 次 · 平均 {{ item.avg_percentage|floatformat:2 }}%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:{{ item.avg_percentage }}%;"></div>
+                </div>
+            </div>
+            {% empty %}
+            <p style="color:#7a6b55;">暂无数据</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="section-title">各成分在不同文献中的比例分布</div>
+<div class="detail-card" style="padding:20px;">
+    {% if ingredient_distribution %}
+    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:12px;">
+        {% for name, entries in ingredient_distribution.items %}
+        <div class="distribution-item">
+            <div class="dist-head">{{ name }} <small style="color:#7a6b55;">（{{ entries|length }} 条配方）</small></div>
+            <div class="dist-entries">
+                {% for entry in entries %}
+                <span class="dist-tag" title="{{ entry.formula_name }}">{{ entry.formula_no }}: {{ entry.percentage }}%</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="color:#7a6b55; text-align:center; padding:20px;">暂无成分数据</p>
+    {% endif %}
+</div>
+{% endblock %}

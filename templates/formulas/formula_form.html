@@ -1,0 +1,154 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}{{ title }} - 历史火药配方文献管理系统{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+    <a href="{% url 'formulas:formula_list' %}" class="btn btn-secondary btn-sm">← 返回列表</a>
+</div>
+
+<div class="page-header">
+    <h2>{{ title }}</h2>
+    <p>请填写配方信息，所有带 <em style="color:#a33;">*</em> 的字段为必填</p>
+</div>
+
+<form method="post" class="form-card">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="message message-error">
+        {% for error in form.non_field_errors %}
+        {{ error }}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="form-grid">
+        <div class="form-group">
+            {{ form.formula_no.label_tag }} <em style="color:#a33;">*</em>
+            {{ form.formula_no }}
+            {% if form.formula_no.errors %}
+            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ form.formula_no.errors.0 }}</div>
+            {% endif %}
+            <small style="color:#7a6b55;">配方编号不能重复</small>
+        </div>
+        <div class="form-group">
+            {{ form.name.label_tag }} <em style="color:#a33;">*</em>
+            {{ form.name }}
+            {% if form.name.errors %}
+            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ form.name.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            {{ form.alias.label_tag }}
+            {{ form.alias }}
+        </div>
+        <div class="form-group">
+            {{ form.literature.label_tag }}
+            {{ form.literature }}
+            {% if form.literature.errors %}
+            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ form.literature.errors.0 }}</div>
+            {% endif %}
+            <small style="color:#7a6b55;">缺少文献出处不能提交评审</small>
+        </div>
+        <div class="form-group">
+            {{ form.literature_page.label_tag }}
+            {{ form.literature_page }}
+        </div>
+        <div class="form-group">
+            {{ form.era.label_tag }}
+            {{ form.era }}
+        </div>
+        <div class="form-group">
+            {{ form.era_year.label_tag }}
+            {{ form.era_year }}
+        </div>
+        <div class="form-group">
+            {{ form.region.label_tag }}
+            {{ form.region }}
+        </div>
+        <div class="form-group">
+            {{ form.usage_category.label_tag }}
+            {{ form.usage_category }}
+        </div>
+        <div class="form-group">
+            {{ form.safety_level.label_tag }}
+            {{ form.safety_level }}
+        </div>
+        <div class="form-group">
+            {{ form.review_status.label_tag }}
+            {{ form.review_status }}
+        </div>
+        <div class="form-group">
+            {{ form.archive_status.label_tag }}
+            {{ form.archive_status }}
+        </div>
+        <div class="form-group full-width">
+            {{ form.description.label_tag }}
+            {{ form.description }}
+        </div>
+        <div class="form-group full-width">
+            {{ form.safety_note.label_tag }}
+            {{ form.safety_note }}
+            {% if form.safety_note.errors %}
+            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ form.safety_note.errors.0 }}</div>
+            {% endif %}
+            <small style="color:#7a6b55;">高风险配方必须填写安全说明</small>
+        </div>
+    </div>
+
+    <div class="formset-section">
+        <h3>成分列表</h3>
+        <small style="color:#7a6b55; display:block; margin-bottom:12px;">所有成分比例合计必须等于 100%</small>
+        {{ formset.management_form }}
+        {% if formset.non_form_errors %}
+        <div class="message message-error">
+            {% for error in formset.non_form_errors %}
+            {{ error }}
+            {% endfor %}
+        </div>
+        {% endif %}
+        <div id="ingredient-forms">
+            {% for ing_form in formset %}
+            <div class="ingredient-row" style="border:1px solid #e8dfc8; padding:10px; border-radius:5px; background:#faf6ed;">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label style="font-size:12px;">成分名称 *</label>
+                    {{ ing_form.name }}
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label style="font-size:12px;">中文古称</label>
+                    {{ ing_form.chinese_name }}
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label style="font-size:12px;">占比(%) *</label>
+                    {{ ing_form.percentage }}
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label style="font-size:12px;">备注</label>
+                    {{ ing_form.remark }}
+                </div>
+                <div style="align-self:center;">
+                    {% if ing_form.instance.pk %}
+                    <label style="font-size:12px; color:#a33;">删除？{{ ing_form.DELETE }}</label>
+                    {% endif %}
+                    {{ ing_form.id }}
+                </div>
+                {% if ing_form.errors %}
+                <div style="grid-column:1/-1; color:#a33; font-size:12px;">
+                    {% for field, errors in ing_form.errors.items %}
+                    {% if field != '__all__' %}{{ field }}: {% endif %}
+                    {% for error in errors %}{{ error }}{% endfor %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">保存</button>
+        <a href="{% url 'formulas:formula_list' %}" class="btn btn-secondary">取消</a>
+    </div>
+</form>
+{% endblock %}
