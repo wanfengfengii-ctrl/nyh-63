@@ -94,7 +94,7 @@ def formula_detail(request, pk):
         formula.save()
 
         messages.success(request, '评审意见已提交')
-        return redirect('formula_detail', pk=pk)
+        return redirect('formulas:formula_detail', pk=pk)
 
     context = {
         'formula': formula,
@@ -114,33 +114,37 @@ def formula_create(request):
         if form.is_valid() and formset.is_valid():
             formula = form.save(commit=False)
             formula.created_by = request.user
-            formula.save()
-            formset.instance = formula
 
-            ingredients = formset.save(commit=False)
-            for ing in ingredients:
-                ing.formula = formula
-                ing.save()
+            temp_ingredients = []
+            for ing_form in formset:
+                if ing_form.cleaned_data and not ing_form.cleaned_data.get('DELETE', False):
+                    ing = ing_form.save(commit=False)
+                    temp_ingredients.append(ing)
 
-            for obj in formset.deleted_objects:
-                obj.delete()
+            total = sum(ing.percentage for ing in temp_ingredients) if temp_ingredients else 0
+            if temp_ingredients and abs(total - 100.0) > 0.01:
+                form.add_error(None, f'成分比例合计必须等于 100%，当前合计为 {round(total, 2)}%')
+            else:
+                formula.save()
+                formset.instance = formula
 
-            total = formula.total_percentage
-            if formula.ingredients.exists() and abs(total - 100.0) > 0.01:
-                messages.warning(
-                    request,
-                    f'提示：当前成分比例合计为 {total}%，需要等于 100% 才能提交评审。'
-                )
+                ingredients = formset.save(commit=False)
+                for ing in ingredients:
+                    ing.formula = formula
+                    ing.save()
 
-            try:
-                formula.full_clean()
-            except ValidationError as e:
-                for field, errors in e.message_dict.items():
-                    for err in errors:
-                        messages.warning(request, f'{field}: {err}')
+                for obj in formset.deleted_objects:
+                    obj.delete()
 
-            messages.success(request, '配方已创建')
-            return redirect('formula_detail', pk=formula.pk)
+                try:
+                    formula.full_clean()
+                except ValidationError as e:
+                    for field, errors in e.message_dict.items():
+                        for err in errors:
+                            messages.warning(request, f'{field}: {err}')
+
+                messages.success(request, '配方已创建')
+                return redirect('formulas:formula_detail', pk=formula.pk)
     else:
         form = FormulaForm()
         formset = IngredientFormSet()
@@ -162,25 +166,32 @@ def formula_edit(request, pk):
         formset = IngredientFormSet(request.POST, instance=formula)
 
         if form.is_valid() and formset.is_valid():
-            formula = form.save()
-            formset.save()
+            temp_ingredients = []
+            for ing_form in formset:
+                if ing_form.cleaned_data and not ing_form.cleaned_data.get('DELETE', False):
+                    if ing_form.instance and ing_form.instance.pk:
+                        ing = ing_form.save(commit=False)
+                        temp_ingredients.append(ing)
+                    else:
+                        ing = ing_form.save(commit=False)
+                        temp_ingredients.append(ing)
 
-            total = formula.total_percentage
-            if formula.ingredients.exists() and abs(total - 100.0) > 0.01:
-                messages.warning(
-                    request,
-                    f'提示：当前成分比例合计为 {total}%，需要等于 100% 才能提交评审。'
-                )
+            total = sum(ing.percentage for ing in temp_ingredients) if temp_ingredients else 0
+            if temp_ingredients and abs(total - 100.0) > 0.01:
+                form.add_error(None, f'成分比例合计必须等于 100%，当前合计为 {round(total, 2)}%')
+            else:
+                formula = form.save()
+                formset.save()
 
-            try:
-                formula.full_clean()
-            except ValidationError as e:
-                for field, errors in e.message_dict.items():
-                    for err in errors:
-                        messages.warning(request, f'{field}: {err}')
+                try:
+                    formula.full_clean()
+                except ValidationError as e:
+                    for field, errors in e.message_dict.items():
+                        for err in errors:
+                            messages.warning(request, f'{field}: {err}')
 
-            messages.success(request, '配方已更新')
-            return redirect('formula_detail', pk=formula.pk)
+                messages.success(request, '配方已更新')
+                return redirect('formulas:formula_detail', pk=formula.pk)
     else:
         form = FormulaForm(instance=formula)
         formset = IngredientFormSet(instance=formula)
@@ -213,9 +224,9 @@ def literature_create(request):
     if request.method == 'POST':
         form = LiteratureForm(request.POST)
         if form.is_valid():
-            form.save()
+            literature = form.save()
             messages.success(request, '文献已添加')
-            return redirect('literature_list')
+            return redirect('formulas:literature_detail', pk=literature.pk)
     else:
         form = LiteratureForm()
     return render(request, 'formulas/literature_form.html', {'form': form, 'title': '添加文献'})
