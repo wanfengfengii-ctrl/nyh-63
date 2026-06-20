@@ -1,0 +1,90 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}{{ title }} - 历史火药配方文献管理系统{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+    <a href="{% url 'formulas:annotation_list' %}" class="btn btn-secondary btn-sm">← 返回列表</a>
+</div>
+
+<div class="page-header">
+    <h2>{{ title }}</h2>
+    <p>请填写注释信息，所有带 <em style="color:#a33;">*</em> 的字段为必填</p>
+</div>
+
+<form method="post" class="form-card">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="message message-error">
+        {% for error in form.non_field_errors %}
+        {{ error }}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="form-grid">
+        <div class="form-group">
+            {{ form.content_type.label_tag }} <em style="color:#a33;">*</em>
+            {{ form.content_type }}
+            {% if form.content_type.errors %}
+            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ form.content_type.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            {{ form.formula.label_tag }}
+            {{ form.formula }}
+            {% if form.formula.errors %}
+            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ form.formula.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            {{ form.literature.label_tag }}
+            {{ form.literature }}
+            {% if form.literature.errors %}
+            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ form.literature.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            {{ form.annotation_type.label_tag }} <em style="color:#a33;">*</em>
+            {{ form.annotation_type }}
+            {% if form.annotation_type.errors %}
+            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ form.annotation_type.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group full-width">
+            {{ form.title.label_tag }} <em style="color:#a33;">*</em>
+            {{ form.title }}
+            {% if form.title.errors %}
+            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ form.title.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group full-width">
+            {{ form.content.label_tag }} <em style="color:#a33;">*</em>
+            {{ form.content }}
+            {% if form.content.errors %}
+            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ form.content.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group full-width">
+            {{ form.reference.label_tag }}
+            {{ form.reference }}
+        </div>
+        <div class="form-group">
+            {{ form.reference_page.label_tag }}
+            {{ form.reference_page }}
+        </div>
+        {% if title == '编辑学术注释' %}
+        <div class="form-group full-width">
+            {{ form.edit_reason.label_tag }}
+            {{ form.edit_reason }}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">保存</button>
+        <a href="{% url 'formulas:annotation_list' %}" class="btn btn-secondary">取消</a>
+    </div>
+</form>
+{% endblock %}

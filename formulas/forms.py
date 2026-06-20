@@ -4,6 +4,8 @@ from .models import (
     Formula, Ingredient, Literature, SafetyReview,
     LiteratureAttachment, UserProfile, RiskAlert,
     OperationLog, FormulaVersion,
+    AcademicAnnotation, AnnotationEditHistory,
+    Dispute, DisputeArgument, DisputeProgress,
 )
 
 
@@ -428,3 +430,167 @@ class LiteratureFilterForm(forms.Form):
         label='作者',
         widget=forms.TextInput(attrs={'class': 'form-control'}),
     )
+
+
+class AcademicAnnotationForm(forms.ModelForm):
+    class Meta:
+        model = AcademicAnnotation
+        fields = [
+            'content_type', 'formula', 'literature',
+            'annotation_type', 'title', 'content',
+            'reference', 'reference_page',
+        ]
+        widgets = {
+            'content_type': forms.Select(attrs={'class': 'form-control'}),
+            'formula': forms.Select(attrs={'class': 'form-control'}),
+            'literature': forms.Select(attrs={'class': 'form-control'}),
+            'annotation_type': forms.Select(attrs={'class': 'form-control'}),
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '简明概括注释主题'}),
+            'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 5, 'placeholder': '详细阐述注释内容'}),
+            'reference': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': '引用的文献、版本或其他学术来源'}),
+            'reference_page': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '如：第15-20页、卷三'}),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        content_type = cleaned_data.get('content_type')
+        formula = cleaned_data.get('formula')
+        literature = cleaned_data.get('literature')
+        if content_type == 'formula' and not formula:
+            raise ValidationError('配方类型注释必须选择关联配方')
+        if content_type == 'literature' and not literature:
+            raise ValidationError('文献类型注释必须选择关联文献')
+        return cleaned_data
+
+
+class AcademicAnnotationFilterForm(forms.Form):
+    ANNOTATION_TYPE_CHOICES_FILTER = [('', '全部类型')] + list(
+        AcademicAnnotation._meta.get_field('annotation_type').choices
+    )
+    CONTENT_TYPE_CHOICES_FILTER = [('', '全部对象')] + list(
+        AcademicAnnotation._meta.get_field('content_type').choices
+    )
+
+    annotation_type = forms.ChoiceField(
+        choices=ANNOTATION_TYPE_CHOICES_FILTER,
+        required=False,
+        label='注释类型',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+    content_type = forms.ChoiceField(
+        choices=CONTENT_TYPE_CHOICES_FILTER,
+        required=False,
+        label='注释对象',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+    keyword = forms.CharField(
+        required=False,
+        label='关键词',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '搜索标题、内容或依据文献'}),
+    )
+
+
+class DisputeForm(forms.ModelForm):
+    class Meta:
+        model = Dispute
+        fields = [
+            'formula', 'literature', 'dispute_type',
+            'title', 'description',
+        ]
+        widgets = {
+            'formula': forms.Select(attrs={'class': 'form-control'}),
+            'literature': forms.Select(attrs={'class': 'form-control'}),
+            'dispute_type': forms.Select(attrs={'class': 'form-control'}),
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '简明概括争议主题'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 5, 'placeholder': '详细描述争议问题'}),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        formula = cleaned_data.get('formula')
+        literature = cleaned_data.get('literature')
+        if not formula and not literature:
+            raise ValidationError('争议必须关联配方或文献')
+        return cleaned_data
+
+
+class DisputeArgumentForm(forms.ModelForm):
+    class Meta:
+        model = DisputeArgument
+        fields = ['stance', 'viewpoint', 'evidence', 'evidence_reference']
+        widgets = {
+            'stance': forms.Select(attrs={'class': 'form-control'}),
+            'viewpoint': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': '阐述您的学术观点'}),
+            'evidence': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': '支持此观点的证据材料'}),
+            'evidence_reference': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '证据出处，如文献标题、页码等'}),
+        }
+
+
+class DisputeProgressForm(forms.ModelForm):
+    class Meta:
+        model = DisputeProgress
+        fields = ['new_status', 'comment']
+        widgets = {
+            'new_status': forms.Select(attrs={'class': 'form-control'}),
+            'comment': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': '状态变更说明'}),
+        }
+
+
+class DisputeFilterForm(forms.Form):
+    DISPUTE_TYPE_CHOICES_FILTER = [('', '全部类型')] + list(
+        Dispute._meta.get_field('dispute_type').choices
+    )
+    DISPUTE_STATUS_CHOICES_FILTER = [('', '全部状态')] + list(
+        Dispute._meta.get_field('status').choices
+    )
+
+    dispute_type = forms.ChoiceField(
+        choices=DISPUTE_TYPE_CHOICES_FILTER,
+        required=False,
+        label='争议类型',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+    status = forms.ChoiceField(
+        choices=DISPUTE_STATUS_CHOICES_FILTER,
+        required=False,
+        label='处理状态',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+    literature_source = forms.CharField(
+        required=False,
+        label='文献来源',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '搜索关联文献标题'}),
+    )
+    keyword = forms.CharField(
+        required=False,
+        label='关键词',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '搜索争议标题或描述'}),
+    )
+
+
+class AnnotationEditForm(forms.ModelForm):
+    edit_reason = forms.CharField(
+        required=False,
+        label='修改原因',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '说明本次修改原因'}),
+    )
+
+    class Meta:
+        model = AcademicAnnotation
+        fields = ['title', 'content', 'reference', 'reference_page']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
+            'reference': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'reference_page': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+
+class DisputeConclusionForm(forms.ModelForm):
+    class Meta:
+        model = Dispute
+        fields = ['status', 'conclusion']
+        widgets = {
+            'status': forms.Select(attrs={'class': 'form-control'}),
+            'conclusion': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': '填写争议结论'}),
+        }

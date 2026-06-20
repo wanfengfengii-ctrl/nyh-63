@@ -217,6 +217,72 @@
         </div>
 
         <div class="detail-section">
+            <h3>学术注释时间线 <small style="color:#7a6b55; font-weight:normal;">（{{ annotations|length }} 条）</small>
+                {% if user.is_authenticated %}
+                <a href="{% url 'formulas:annotation_create' %}?content_type=formula&object_id={{ formula.pk }}" class="btn btn-sm btn-primary" style="margin-left:12px;">添加注释</a>
+                {% endif %}
+            </h3>
+            {% if annotations %}
+            <div class="timeline">
+                {% for ann in annotations %}
+                <div class="timeline-item">
+                    <div class="timeline-time">{{ ann.created_at|date:"Y-m-d H:i" }}</div>
+                    <div class="timeline-title">
+                        <span class="badge badge-{{ ann.annotation_type }}" style="margin-right:6px;">{{ ann.get_annotation_type_display }}</span>
+                        <a href="{% url 'formulas:annotation_detail' ann.pk %}">{{ ann.title }}</a>
+                    </div>
+                    <div class="timeline-meta">
+                        注释人：{{ ann.created_by.username|default:"-" }}
+                        {% if ann.reference %} · 依据：{{ ann.reference|truncatewords:8 }}{% endif %}
+                    </div>
+                    <div class="timeline-comment">{{ ann.content|truncatewords:30|linebreaksbr }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color:#7a6b55; font-size:14px;">暂无学术注释。</p>
+            {% endif %}
+        </div>
+
+        <div class="detail-section">
+            <h3>争议考证 <small style="color:#7a6b55; font-weight:normal;">（{{ disputes|length }} 条）</small>
+                {% if user.is_authenticated %}
+                <a href="{% url 'formulas:dispute_create' %}?content_type=formula&object_id={{ formula.pk }}" class="btn btn-sm btn-primary" style="margin-left:12px;">发起争议</a>
+                {% endif %}
+            </h3>
+            {% if disputes %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>争议标题</th>
+                        <th>类型</th>
+                        <th>状态</th>
+                        <th>发起人</th>
+                        <th>发起时间</th>
+                        <th>观点数</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in disputes %}
+                    <tr>
+                        <td><strong>{{ d.title }}</strong></td>
+                        <td><span class="badge badge-{{ d.dispute_type }}">{{ d.get_dispute_type_display }}</span></td>
+                        <td><span class="badge badge-{{ d.status }}">{{ d.get_status_display }}</span></td>
+                        <td>{{ d.initiated_by.username|default:"-" }}</td>
+                        <td>{{ d.initiated_at|date:"Y-m-d H:i" }}</td>
+                        <td>{{ d.arguments.count }}</td>
+                        <td><a href="{% url 'formulas:dispute_detail' d.pk %}" class="btn btn-sm btn-secondary">查看</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color:#7a6b55; font-size:14px;">暂无争议条目。</p>
+            {% endif %}
+        </div>
+
+        <div class="detail-section">
             <h3>风险预警记录</h3>
             {% if risk_alerts %}
             <table>

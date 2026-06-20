@@ -5,6 +5,8 @@ from .models import (
     Literature, Formula, Ingredient, SafetyReview,
     UserProfile, OperationLog, FormulaVersion,
     LiteratureAttachment, RiskAlert, ReviewFlow,
+    AcademicAnnotation, AnnotationEditHistory,
+    Dispute, DisputeArgument, DisputeProgress,
 )
 
 
@@ -196,3 +198,104 @@ class RiskAlertAdmin(admin.ModelAdmin):
             'fields': ['status', 'handled_by', 'handled_at', 'handle_note']
         }),
     ]
+
+
+class AnnotationEditHistoryInline(admin.TabularInline):
+    model = AnnotationEditHistory
+    extra = 0
+    fields = ['old_content', 'new_content', 'edit_reason', 'edited_by', 'edited_at']
+    readonly_fields = ['old_content', 'new_content', 'edit_reason', 'edited_by', 'edited_at']
+    can_delete = False
+
+
+@admin.register(AcademicAnnotation)
+class AcademicAnnotationAdmin(admin.ModelAdmin):
+    list_display = [
+        'title', 'annotation_type', 'content_type',
+        'formula', 'literature', 'created_by', 'created_at',
+    ]
+    list_filter = ['annotation_type', 'content_type', 'created_at']
+    search_fields = ['title', 'content', 'reference']
+    readonly_fields = ['created_at', 'updated_at']
+    inlines = [AnnotationEditHistoryInline]
+    fieldsets = [
+        ('关联对象', {
+            'fields': ['content_type', 'formula', 'literature']
+        }),
+        ('注释内容', {
+            'fields': ['annotation_type', 'title', 'content', 'reference', 'reference_page']
+        }),
+        ('元信息', {
+            'fields': ['created_by', 'created_at', 'updated_at'],
+            'classes': ['collapse']
+        }),
+    ]
+
+
+@admin.register(AnnotationEditHistory)
+class AnnotationEditHistoryAdmin(admin.ModelAdmin):
+    list_display = ['annotation', 'edited_by', 'edited_at', 'edit_reason']
+    list_filter = ['edited_at']
+    search_fields = ['annotation__title', 'old_content', 'new_content']
+    readonly_fields = ['annotation', 'old_content', 'new_content', 'edit_reason', 'edited_by', 'edited_at']
+
+    def has_add_permission(self, request):
+        return False
+
+
+class DisputeArgumentInline(admin.TabularInline):
+    model = DisputeArgument
+    extra = 0
+    fields = ['stance', 'viewpoint', 'evidence', 'evidence_reference', 'submitted_by', 'submitted_at']
+    readonly_fields = ['submitted_by', 'submitted_at']
+
+
+class DisputeProgressInline(admin.TabularInline):
+    model = DisputeProgress
+    extra = 0
+    fields = ['old_status', 'new_status', 'comment', 'operator', 'operated_at']
+    readonly_fields = ['old_status', 'new_status', 'comment', 'operator', 'operated_at']
+    can_delete = False
+
+
+@admin.register(Dispute)
+class DisputeAdmin(admin.ModelAdmin):
+    list_display = [
+        'title', 'dispute_type', 'status',
+        'formula', 'literature', 'initiated_by', 'initiated_at',
+    ]
+    list_filter = ['dispute_type', 'status', 'initiated_at']
+    search_fields = ['title', 'description', 'conclusion']
+    readonly_fields = ['initiated_at', 'resolved_at', 'updated_at']
+    inlines = [DisputeArgumentInline, DisputeProgressInline]
+    fieldsets = [
+        ('关联对象', {
+            'fields': ['formula', 'literature']
+        }),
+        ('争议信息', {
+            'fields': ['dispute_type', 'title', 'description', 'status', 'conclusion']
+        }),
+        ('发起与解决', {
+            'fields': ['initiated_by', 'initiated_at', 'resolved_by', 'resolved_at'],
+            'classes': ['collapse']
+        }),
+    ]
+
+
+@admin.register(DisputeArgument)
+class DisputeArgumentAdmin(admin.ModelAdmin):
+    list_display = ['dispute', 'stance', 'submitted_by', 'submitted_at']
+    list_filter = ['stance', 'submitted_at']
+    search_fields = ['dispute__title', 'viewpoint', 'evidence']
+    readonly_fields = ['submitted_at', 'updated_at']
+
+
+@admin.register(DisputeProgress)
+class DisputeProgressAdmin(admin.ModelAdmin):
+    list_display = ['dispute', 'old_status', 'new_status', 'operator', 'operated_at']
+    list_filter = ['new_status', 'operated_at']
+    search_fields = ['dispute__title', 'comment']
+    readonly_fields = ['dispute', 'old_status', 'new_status', 'comment', 'operator', 'operated_at']
+
+    def has_add_permission(self, request):
+        return False

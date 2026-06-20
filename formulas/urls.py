@@ -25,4 +25,15 @@ urlpatterns = [
     path('logs/', views.operation_logs, name='operation_logs'),
     path('alerts/', views.risk_alerts, name='risk_alerts'),
     path('profile/', views.user_profile, name='user_profile'),
+
+    path('annotations/', views.annotation_list, name='annotation_list'),
+    path('annotations/<int:pk>/', views.annotation_detail, name='annotation_detail'),
+    path('annotations/create/', views.annotation_create, name='annotation_create'),
+    path('annotations/<int:pk>/edit/', views.annotation_edit, name='annotation_edit'),
+    path('annotations/<int:pk>/delete/', views.annotation_delete, name='annotation_delete'),
+
+    path('disputes/', views.dispute_list, name='dispute_list'),
+    path('disputes/<int:pk>/', views.dispute_detail, name='dispute_detail'),
+    path('disputes/create/', views.dispute_create, name='dispute_create'),
+    path('disputes/<int:pk>/delete/', views.dispute_delete, name='dispute_delete'),
 ]

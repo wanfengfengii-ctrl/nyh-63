@@ -1,0 +1,82 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}学术注释列表 - 历史火药配方文献管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>学术注释列表</h2>
+    <p>按注释类型、注释对象等条件筛选学术注释</p>
+</div>
+
+<form class="filter-form" method="get">
+    <div class="filter-grid">
+        {% for field in form %}
+        <div class="form-group">
+            {{ field.label_tag }}
+            {{ field }}
+        </div>
+        {% endfor %}
+    </div>
+    <div style="display:flex; gap:10px;">
+        <button type="submit" class="btn btn-primary">筛选</button>
+        <a href="{% url 'formulas:annotation_list' %}" class="btn btn-secondary">重置</a>
+    </div>
+</form>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <p style="color:#7a6b55; font-size:14px;">共 <strong>{{ annotations|length }}</strong> 条记录</p>
+    {% if user.is_authenticated %}
+    <a href="{% url 'formulas:annotation_create' %}" class="btn btn-primary">添加注释</a>
+    {% endif %}
+</div>
+
+{% if annotations %}
+<table>
+    <thead>
+        <tr>
+            <th>注释标题</th>
+            <th>注释类型</th>
+            <th>注释对象</th>
+            <th>依据文献</th>
+            <th>注释人</th>
+            <th>创建时间</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for ann in annotations %}
+        <tr>
+            <td><strong>{{ ann.title }}</strong></td>
+            <td><span class="badge badge-{{ ann.annotation_type }}">{{ ann.get_annotation_type_display }}</span></td>
+            <td>
+                {% if ann.content_type == 'formula' and ann.formula %}
+                    <a href="{% url 'formulas:formula_detail' ann.formula.pk %}">{{ ann.formula.name }}</a>
+                    <small style="color:#7a6b55;">（配方）</small>
+                {% elif ann.content_type == 'literature' and ann.literature %}
+                    <a href="{% url 'formulas:literature_detail' ann.literature.pk %}">{{ ann.literature.title }}</a>
+                    <small style="color:#7a6b55;">（文献）</small>
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td>{{ ann.reference|default:"-"|truncatechars:30 }}</td>
+            <td>{{ ann.created_by.username|default:"-" }}</td>
+            <td>{{ ann.created_at|date:"Y-m-d H:i" }}</td>
+            <td>
+                <div class="action-links">
+                    <a href="{% url 'formulas:annotation_detail' ann.pk %}" class="btn btn-sm btn-secondary">查看</a>
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'formulas:annotation_edit' ann.pk %}" class="btn btn-sm btn-primary">编辑</a>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <p>没有找到符合条件的学术注释。</p>
+</div>
+{% endif %}
+{% endblock %}

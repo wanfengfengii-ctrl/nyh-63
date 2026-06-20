@@ -1,0 +1,69 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}发起争议 - 历史火药配方文献管理系统{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+    <a href="{% url 'formulas:dispute_list' %}" class="btn btn-secondary btn-sm">← 返回列表</a>
+</div>
+
+<div class="page-header">
+    <h2>发起争议</h2>
+    <p>请填写争议信息，所有带 <em style="color:#a33;">*</em> 的字段为必填</p>
+</div>
+
+<form method="post" class="form-card">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="message message-error">
+        {% for error in form.non_field_errors %}
+        {{ error }}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="form-grid">
+        <div class="form-group">
+            {{ form.formula.label_tag }}
+            {{ form.formula }}
+            {% if form.formula.errors %}
+            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ form.formula.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            {{ form.literature.label_tag }}
+            {{ form.literature }}
+            {% if form.literature.errors %}
+            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ form.literature.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            {{ form.dispute_type.label_tag }} <em style="color:#a33;">*</em>
+            {{ form.dispute_type }}
+            {% if form.dispute_type.errors %}
+            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ form.dispute_type.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group full-width">
+            {{ form.title.label_tag }} <em style="color:#a33;">*</em>
+            {{ form.title }}
+            {% if form.title.errors %}
+            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ form.title.errors.0 }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group full-width">
+            {{ form.description.label_tag }} <em style="color:#a33;">*</em>
+            {{ form.description }}
+            {% if form.description.errors %}
+            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ form.description.errors.0 }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">提交争议</button>
+        <a href="{% url 'formulas:dispute_list' %}" class="btn btn-secondary">取消</a>
+    </div>
+</form>
+{% endblock %}

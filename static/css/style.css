@@ -941,6 +941,86 @@ a:hover {
     border-radius: 3px;
 }
 
+.badge-authenticity {
+    background: #f3e8ff;
+    color: #6b21a8;
+}
+
+.badge-ingredient {
+    background: #fff1f0;
+    color: #a12828;
+}
+
+.badge-proportion {
+    background: #fff8e1;
+    color: #856404;
+}
+
+.badge-dating {
+    background: #e8f0fe;
+    color: #1a4e8a;
+}
+
+.badge-usage {
+    background: #e0f2e0;
+    color: #2d6a2d;
+}
+
+.badge-safety {
+    background: #fde2e2;
+    color: #8b2c2c;
+}
+
+.badge-other {
+    background: #e0e0e0;
+    color: #555;
+}
+
+.badge-open {
+    background: #d6e8ff;
+    color: #1a4e8a;
+}
+
+.badge-evidence {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.badge-review {
+    background: #f3e8ff;
+    color: #6b21a8;
+}
+
+.badge-resolved {
+    background: #e0f2e0;
+    color: #2d6a2d;
+}
+
+.badge-unresolved {
+    background: #fde2e2;
+    color: #a12828;
+}
+
+.badge-withdrawn {
+    background: #e0e0e0;
+    color: #555;
+}
+
+.badge-support {
+    background: #e0f2e0;
+    color: #2d6a2d;
+}
+
+.badge-oppose {
+    background: #fde2e2;
+    color: #a12828;
+}
+
+.badge-neutral {
+    background: #fff3cd;
+    color: #856404;
+}
+
 .risk-score-low .score-bar-fill {
     background: linear-gradient(90deg, #4caf50, #81c784);
 }
@@ -1077,4 +1157,115 @@ a:hover {
 .dashboard-card .card-trend-flat {
     background: #f5efe0;
     color: #7a6b55;
+}
+
+.badge-term {
+    background: #e8f0fe;
+    color: #1a4e8a;
+}
+
+.badge-version_diff {
+    background: #f0e6d0;
+    color: #6b4423;
+}
+
+.badge-synonym {
+    background: #eaf3e8;
+    color: #2d5a2d;
+}
+
+.badge-authenticity {
+    background: #f3e8f0;
+    color: #6b2d5a;
+}
+
+.badge-usage {
+    background: #e8f3f3;
+    color: #2d5a5a;
+}
+
+.badge-safety {
+    background: #fde2e2;
+    color: #8b2c2c;
+}
+
+.badge-ingredient {
+    background: #fde8d8;
+    color: #8b5a2c;
+}
+
+.badge-proportion {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.badge-dating {
+    background: #d6e8ff;
+    color: #1a4e8a;
+}
+
+.badge-other {
+    background: #e8e8e8;
+    color: #555;
+}
+
+.badge-open {
+    background: #d6e8ff;
+    color: #1a4e8a;
+}
+
+.badge-evidence {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.badge-review {
+    background: #f3e8f0;
+    color: #6b2d5a;
+}
+
+.badge-resolved {
+    background: #e0f2e0;
+    color: #2d6a2d;
+}
+
+.badge-unresolved {
+    background: #fde2e2;
+    color: #a12828;
+}
+
+.badge-withdrawn {
+    background: #e8e8e8;
+    color: #777;
+}
+
+.badge-support {
+    background: #e0f2e0;
+    color: #2d6a2d;
+}
+
+.badge-oppose {
+    background: #fde2e2;
+    color: #a12828;
+}
+
+.badge-neutral {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.argument-support {
+    border-left: 4px solid #4caf50;
+}
+
+.argument-oppose {
+    border-left: 4px solid #e53935;
+}
+
+.argument-neutral {
+    border-left: 4px solid #ffc107;
+}
+
+.form-check-input {
+    margin-right: 6px;
 }

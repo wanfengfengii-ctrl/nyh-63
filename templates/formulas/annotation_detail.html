@@ -1,0 +1,103 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}{{ annotation.title }} - 学术注释详情{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+    <a href="{% url 'formulas:annotation_list' %}" class="btn btn-secondary btn-sm">← 返回列表</a>
+    {% if user.is_authenticated %}
+    <a href="{% url 'formulas:annotation_edit' annotation.pk %}" class="btn btn-primary btn-sm" style="margin-left:8px;">编辑注释</a>
+    <a href="{% url 'formulas:annotation_delete' annotation.pk %}" class="btn btn-danger btn-sm" style="margin-left:8px;" onclick="return confirm('确定要删除此注释吗？');">删除注释</a>
+    {% endif %}
+</div>
+
+<div class="detail-card">
+    <div class="detail-header">
+        <h2>{{ annotation.title }}</h2>
+        <div class="meta">
+            <span class="badge badge-{{ annotation.annotation_type }}">{{ annotation.get_annotation_type_display }}</span>
+            {% if annotation.created_by %}· 注释人：{{ annotation.created_by.username }}{% endif %}
+            · 创建时间：{{ annotation.created_at|date:"Y-m-d H:i" }}
+            · 更新时间：{{ annotation.updated_at|date:"Y-m-d H:i" }}
+        </div>
+    </div>
+    <div class="detail-body">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="label">注释类型</span>
+                <span class="value"><span class="badge badge-{{ annotation.annotation_type }}">{{ annotation.get_annotation_type_display }}</span></span>
+            </div>
+            <div class="detail-item">
+                <span class="label">注释对象</span>
+                <span class="value">
+                    {% if annotation.content_type == 'formula' and annotation.formula %}
+                        <a href="{% url 'formulas:formula_detail' annotation.formula.pk %}">{{ annotation.formula.name }}</a>
+                        <small style="color:#7a6b55;">（配方）</small>
+                    {% elif annotation.content_type == 'literature' and annotation.literature %}
+                        <a href="{% url 'formulas:literature_detail' annotation.literature.pk %}">{{ annotation.literature.title }}</a>
+                        <small style="color:#7a6b55;">（文献）</small>
+                    {% else %}
+                        -
+                    {% endif %}
+                </span>
+            </div>
+            <div class="detail-item">
+                <span class="label">依据文献</span>
+                <span class="value">{{ annotation.reference|default:"-" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">依据文献页码/章节</span>
+                <span class="value">{{ annotation.reference_page|default:"-" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">注释人</span>
+                <span class="value">{{ annotation.created_by.username|default:"-" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">创建时间</span>
+                <span class="value">{{ annotation.created_at|date:"Y-m-d H:i" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">更新时间</span>
+                <span class="value">{{ annotation.updated_at|date:"Y-m-d H:i" }}</span>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h3>注释内容</h3>
+            <p style="font-size:14px; line-height:1.8;">{{ annotation.content|linebreaksbr }}</p>
+        </div>
+
+        <div class="detail-section">
+            <h3>编辑历史</h3>
+            {% if edit_history %}
+            <div class="timeline">
+                {% for entry in edit_history %}
+                <div class="timeline-item">
+                    <div class="timeline-time">{{ entry.edited_at|date:"Y-m-d H:i" }}</div>
+                    <div class="timeline-title">
+                        {{ entry.edited_by.username|default:"未知" }} 编辑了注释
+                    </div>
+                    {% if entry.edit_reason %}
+                    <div class="timeline-meta">修改原因：{{ entry.edit_reason }}</div>
+                    {% endif %}
+                    <div class="timeline-comment">
+                        <div style="margin-bottom:6px;">
+                            <strong style="color:#a12828;">旧内容：</strong>
+                            <span style="font-size:13px; color:#7a6b55;">{{ entry.old_content|truncatechars:200|linebreaksbr }}</span>
+                        </div>
+                        <div>
+                            <strong style="color:#2d6a2d;">新内容：</strong>
+                            <span style="font-size:13px;">{{ entry.new_content|truncatechars:200|linebreaksbr }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color:#7a6b55; font-size:14px;">暂无编辑历史记录。</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

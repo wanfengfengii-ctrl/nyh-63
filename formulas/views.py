@@ -21,6 +21,8 @@ from .models import (
     Formula, Literature, Ingredient, SafetyReview,
     UserProfile, OperationLog, FormulaVersion,
     LiteratureAttachment, RiskAlert, ReviewFlow,
+    AcademicAnnotation, AnnotationEditHistory,
+    Dispute, DisputeArgument, DisputeProgress,
 )
 from .forms import (
     FormulaForm, IngredientFormSet, LiteratureForm,
@@ -28,6 +30,10 @@ from .forms import (
     LiteratureAttachmentForm, AdvancedSearchForm,
     FormulaCompareForm, UserProfileForm, AlertHandleForm,
     OperationLogFilterForm, DataExportForm, LiteratureFilterForm,
+    AcademicAnnotationForm, AcademicAnnotationFilterForm,
+    AnnotationEditForm,
+    DisputeForm, DisputeArgumentForm, DisputeProgressForm,
+    DisputeFilterForm, DisputeConclusionForm,
 )
 from .signals import log_operation, check_review_overdue
 
@@ -213,6 +219,8 @@ def formula_detail(request, pk):
     versions = formula.versions.all().order_by('-version')
     review_flows = formula.review_flows.all().select_related('operator').order_by('created_at')
     risk_alerts = formula.risk_alerts.all().order_by('-created_at')
+    annotations = formula.annotations.all().select_related('created_by').order_by('-created_at')
+    disputes = formula.disputes.all().select_related('initiated_by', 'resolved_by').prefetch_related('arguments').order_by('-initiated_at')
 
     log_operation(request.user, 'view', target_model='Formula', target_id=formula.pk,
                   target_name=str(formula), description=f'查看配方详情：{formula}',
@@ -265,6 +273,8 @@ def formula_detail(request, pk):
         'versions': versions,
         'review_flows': review_flows,
         'risk_alerts': risk_alerts,
+        'annotations': annotations,
+        'disputes': disputes,
         'can_review': can_review,
         'user_role': user_role,
     }
@@ -504,6 +514,8 @@ def literature_detail(request, pk):
     literature = get_object_or_404(Literature, pk=pk)
     formulas = literature.formulas.all()
     attachments = literature.attachments.all()
+    annotations = literature.annotations.all().select_related('created_by').order_by('-created_at')
+    disputes = literature.disputes.all().select_related('initiated_by', 'resolved_by').prefetch_related('arguments').order_by('-initiated_at')
     attachment_form = None
     if has_perm(request.user, 'upload'):
         attachment_form = LiteratureAttachmentForm(request.POST or None, request.FILES or None)
@@ -525,6 +537,8 @@ def literature_detail(request, pk):
         'literature': literature,
         'formulas': formulas,
         'attachments': attachments,
+        'annotations': annotations,
+        'disputes': disputes,
         'attachment_form': attachment_form,
         'can_upload': has_perm(request.user, 'upload'),
     }
@@ -1051,3 +1065,317 @@ def user_profile(request):
         'role_label': ROLE_LABELS.get(profile.role, '访客'),
     }
     return render(request, 'formulas/user_profile.html', context)
+
+
+def annotation_list(request):
+    form = AcademicAnnotationFilterForm(request.GET or None)
+    queryset = AcademicAnnotation.objects.select_related(
+        'formula', 'literature', 'created_by',
+    ).all()
+
+    if form.is_valid():
+        annotation_type = form.cleaned_data.get('annotation_type')
+        content_type = form.cleaned_data.get('content_type')
+        keyword = form.cleaned_data.get('keyword')
+        if annotation_type:
+            queryset = queryset.filter(annotation_type=annotation_type)
+        if content_type:
+            queryset = queryset.filter(content_type=content_type)
+        if keyword:
+            queryset = queryset.filter(
+                Q(title__icontains=keyword)
+                | Q(content__icontains=keyword)
+                | Q(reference__icontains=keyword)
+            )
+
+    log_operation(request.user, 'view', target_model='AcademicAnnotation',
+                  target_name='学术注释列表', description='浏览学术注释列表', request=request)
+
+    context = {
+        'form': form,
+        'annotations': queryset,
+        'user_role': get_user_role(request.user) if request.user.is_authenticated else 'guest',
+    }
+    return render(request, 'formulas/annotation_list.html', context)
+
+
+def annotation_detail(request, pk):
+    annotation = get_object_or_404(AcademicAnnotation, pk=pk)
+    edit_history = annotation.edit_history.all().select_related('edited_by')
+
+    log_operation(request.user, 'view', target_model='AcademicAnnotation',
+                  target_id=annotation.pk, target_name=annotation.title,
+                  description=f'查看学术注释：{annotation.title}', request=request)
+
+    context = {
+        'annotation': annotation,
+        'edit_history': edit_history,
+        'user_role': get_user_role(request.user) if request.user.is_authenticated else 'guest',
+    }
+    return render(request, 'formulas/annotation_detail.html', context)
+
+
+@login_required
+@perm_required('create')
+def annotation_create(request):
+    initial = {}
+    ct = request.GET.get('content_type', '')
+    obj_id = request.GET.get('object_id', '')
+    if ct in ('formula', 'literature') and obj_id:
+        initial['content_type'] = ct
+        initial[ct] = obj_id
+
+    if request.method == 'POST':
+        form = AcademicAnnotationForm(request.POST)
+        if form.is_valid():
+            ann = form.save(commit=False)
+            ann.created_by = request.user
+            ann.save()
+            log_operation(request.user, 'create', target_model='AcademicAnnotation',
+                          target_id=ann.pk, target_name=ann.title,
+                          description=f'创建学术注释：{ann.title}', request=request)
+            messages.success(request, '学术注释已添加')
+            if ann.content_type == 'formula' and ann.formula:
+                return redirect('formulas:formula_detail', pk=ann.formula.pk)
+            elif ann.content_type == 'literature' and ann.literature:
+                return redirect('formulas:literature_detail', pk=ann.literature.pk)
+            return redirect('formulas:annotation_list')
+    else:
+        form = AcademicAnnotationForm(initial=initial)
+
+    context = {
+        'form': form,
+        'title': '添加学术注释',
+    }
+    return render(request, 'formulas/annotation_form.html', context)
+
+
+@login_required
+@perm_required('update')
+def annotation_edit(request, pk):
+    annotation = get_object_or_404(AcademicAnnotation, pk=pk)
+
+    if request.method == 'POST':
+        form = AnnotationEditForm(request.POST, instance=annotation)
+        if form.is_valid():
+            old_content = annotation.content
+            annotation = form.save(commit=False)
+            annotation.save()
+            edit_reason = form.cleaned_data.get('edit_reason', '')
+            if old_content != form.cleaned_data['content']:
+                AnnotationEditHistory.objects.create(
+                    annotation=annotation,
+                    old_content=old_content,
+                    new_content=form.cleaned_data['content'],
+                    edit_reason=edit_reason,
+                    edited_by=request.user,
+                )
+            log_operation(request.user, 'update', target_model='AcademicAnnotation',
+                          target_id=annotation.pk, target_name=annotation.title,
+                          description=f'编辑学术注释：{annotation.title}', request=request)
+            messages.success(request, '学术注释已更新')
+            return redirect('formulas:annotation_detail', pk=annotation.pk)
+    else:
+        form = AnnotationEditForm(instance=annotation)
+
+    context = {
+        'form': form,
+        'title': '编辑学术注释',
+        'annotation': annotation,
+    }
+    return render(request, 'formulas/annotation_form.html', context)
+
+
+@login_required
+@perm_required('delete')
+def annotation_delete(request, pk):
+    annotation = get_object_or_404(AcademicAnnotation, pk=pk)
+    redirect_url = 'formulas:annotation_list'
+    if annotation.content_type == 'formula' and annotation.formula:
+        redirect_url = None
+        redir_pk = annotation.formula.pk
+    elif annotation.content_type == 'literature' and annotation.literature:
+        redirect_url = None
+        redir_pk = annotation.literature.pk
+
+    log_operation(request.user, 'delete', target_model='AcademicAnnotation',
+                  target_id=annotation.pk, target_name=annotation.title,
+                  description=f'删除学术注释：{annotation.title}', request=request)
+    annotation.delete()
+    messages.success(request, '学术注释已删除')
+
+    if redirect_url is None:
+        if annotation.content_type == 'formula':
+            return redirect('formulas:formula_detail', pk=redir_pk)
+        else:
+            return redirect('formulas:literature_detail', pk=redir_pk)
+    return redirect(redirect_url)
+
+
+def dispute_list(request):
+    form = DisputeFilterForm(request.GET or None)
+    queryset = Dispute.objects.select_related(
+        'formula', 'literature', 'initiated_by', 'resolved_by',
+    ).prefetch_related('arguments').all()
+
+    if form.is_valid():
+        dispute_type = form.cleaned_data.get('dispute_type')
+        status = form.cleaned_data.get('status')
+        literature_source = form.cleaned_data.get('literature_source')
+        keyword = form.cleaned_data.get('keyword')
+        if dispute_type:
+            queryset = queryset.filter(dispute_type=dispute_type)
+        if status:
+            queryset = queryset.filter(status=status)
+        if literature_source:
+            queryset = queryset.filter(
+                Q(literature__title__icontains=literature_source)
+                | Q(formula__literature__title__icontains=literature_source)
+            )
+        if keyword:
+            queryset = queryset.filter(
+                Q(title__icontains=keyword)
+                | Q(description__icontains=keyword)
+            )
+
+    log_operation(request.user, 'view', target_model='Dispute',
+                  target_name='争议列表', description='浏览争议考证列表', request=request)
+
+    context = {
+        'form': form,
+        'disputes': queryset,
+        'user_role': get_user_role(request.user) if request.user.is_authenticated else 'guest',
+    }
+    return render(request, 'formulas/dispute_list.html', context)
+
+
+def dispute_detail(request, pk):
+    dispute = get_object_or_404(Dispute, pk=pk)
+    arguments = dispute.arguments.all().select_related('submitted_by')
+    progress_records = dispute.progress_records.all().select_related('operator')
+
+    log_operation(request.user, 'view', target_model='Dispute',
+                  target_id=dispute.pk, target_name=dispute.title,
+                  description=f'查看争议条目：{dispute.title}', request=request)
+
+    argument_form = None
+    progress_form = None
+    conclusion_form = None
+    can_edit = has_perm(request.user, 'update')
+    user_role = get_user_role(request.user) if request.user.is_authenticated else 'guest'
+
+    if can_edit and request.user.is_authenticated:
+        argument_form = DisputeArgumentForm()
+        progress_form = DisputeProgressForm()
+        conclusion_form = DisputeConclusionForm(instance=dispute)
+
+    if request.method == 'POST' and can_edit:
+        action = request.POST.get('action', '')
+
+        if action == 'add_argument':
+            argument_form = DisputeArgumentForm(request.POST)
+            if argument_form.is_valid():
+                arg = argument_form.save(commit=False)
+                arg.dispute = dispute
+                arg.submitted_by = request.user
+                arg.save()
+                log_operation(request.user, 'create', target_model='DisputeArgument',
+                              target_id=arg.pk, target_name=f'{dispute.title} - 新观点',
+                              description=f'提交争议观点', request=request)
+                messages.success(request, '观点已提交')
+                return redirect('formulas:dispute_detail', pk=pk)
+
+        elif action == 'update_status':
+            progress_form = DisputeProgressForm(request.POST)
+            if progress_form.is_valid():
+                old_status = dispute.status
+                new_status = progress_form.cleaned_data['new_status']
+                comment = progress_form.cleaned_data.get('comment', '')
+                DisputeProgress.objects.create(
+                    dispute=dispute,
+                    old_status=old_status,
+                    new_status=new_status,
+                    comment=comment,
+                    operator=request.user,
+                )
+                dispute.status = new_status
+                if new_status in ('resolved', 'unresolved', 'withdrawn'):
+                    dispute.resolved_by = request.user
+                    dispute.resolved_at = timezone.now()
+                dispute.save()
+                log_operation(request.user, 'update', target_model='Dispute',
+                              target_id=dispute.pk, target_name=dispute.title,
+                              description=f'争议状态变更：{dispute.get_status_display()}', request=request)
+                messages.success(request, '争议状态已更新')
+                return redirect('formulas:dispute_detail', pk=pk)
+
+        elif action == 'update_conclusion':
+            conclusion_form = DisputeConclusionForm(request.POST, instance=dispute)
+            if conclusion_form.is_valid():
+                conclusion_form.save()
+                log_operation(request.user, 'update', target_model='Dispute',
+                              target_id=dispute.pk, target_name=dispute.title,
+                              description='更新争议结论', request=request)
+                messages.success(request, '争议结论已更新')
+                return redirect('formulas:dispute_detail', pk=pk)
+
+    context = {
+        'dispute': dispute,
+        'arguments': arguments,
+        'progress_records': progress_records,
+        'argument_form': argument_form,
+        'progress_form': progress_form,
+        'conclusion_form': conclusion_form,
+        'can_edit': can_edit,
+        'user_role': user_role,
+    }
+    return render(request, 'formulas/dispute_detail.html', context)
+
+
+@login_required
+@perm_required('create')
+def dispute_create(request):
+    initial = {}
+    ct = request.GET.get('content_type', '')
+    obj_id = request.GET.get('object_id', '')
+    if ct in ('formula', 'literature') and obj_id:
+        initial[ct] = obj_id
+
+    if request.method == 'POST':
+        form = DisputeForm(request.POST)
+        if form.is_valid():
+            dispute = form.save(commit=False)
+            dispute.initiated_by = request.user
+            dispute.save()
+            DisputeProgress.objects.create(
+                dispute=dispute,
+                old_status='',
+                new_status='open',
+                comment='发起争议',
+                operator=request.user,
+            )
+            log_operation(request.user, 'create', target_model='Dispute',
+                          target_id=dispute.pk, target_name=dispute.title,
+                          description=f'发起争议条目：{dispute.title}', request=request)
+            messages.success(request, '争议条目已创建')
+            return redirect('formulas:dispute_detail', pk=dispute.pk)
+    else:
+        form = DisputeForm(initial=initial)
+
+    context = {
+        'form': form,
+        'title': '发起争议考证',
+    }
+    return render(request, 'formulas/dispute_form.html', context)
+
+
+@login_required
+@perm_required('update')
+def dispute_delete(request, pk):
+    dispute = get_object_or_404(Dispute, pk=pk)
+    log_operation(request.user, 'delete', target_model='Dispute',
+                  target_id=dispute.pk, target_name=dispute.title,
+                  description=f'删除争议条目：{dispute.title}', request=request)
+    dispute.delete()
+    messages.success(request, '争议条目已删除')
+    return redirect('formulas:dispute_list')

@@ -1,0 +1,237 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}{{ dispute.title }} - 争议详情{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+    <a href="{% url 'formulas:dispute_list' %}" class="btn btn-secondary btn-sm">← 返回争议列表</a>
+    {% if can_edit %}
+    <a href="{% url 'formulas:dispute_delete' dispute.pk %}" class="btn btn-danger btn-sm" style="margin-left:8px;" onclick="return confirm('确认删除此争议？此操作不可恢复。');">删除</a>
+    {% endif %}
+</div>
+
+<div class="detail-card">
+    <div class="detail-header">
+        <h2>{{ dispute.title }}</h2>
+        <div class="meta">
+            <span class="badge badge-{{ dispute.dispute_type }}">{{ dispute.get_dispute_type_display }}</span>
+            <span class="badge badge-{{ dispute.status }}" style="margin-left:6px;">{{ dispute.get_status_display }}</span>
+            <span style="margin-left:8px;">发起人：{{ dispute.initiated_by.username|default:"-" }}</span>
+            <span style="margin-left:8px;">发起时间：{{ dispute.initiated_at|date:"Y-m-d H:i" }}</span>
+        </div>
+    </div>
+    <div class="detail-body">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="label">争议类型</span>
+                <span class="value"><span class="badge badge-{{ dispute.dispute_type }}">{{ dispute.get_dispute_type_display }}</span></span>
+            </div>
+            <div class="detail-item">
+                <span class="label">处理状态</span>
+                <span class="value"><span class="badge badge-{{ dispute.status }}">{{ dispute.get_status_display }}</span></span>
+            </div>
+            <div class="detail-item">
+                <span class="label">发起人</span>
+                <span class="value">{{ dispute.initiated_by.username|default:"-" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">发起时间</span>
+                <span class="value">{{ dispute.initiated_at|date:"Y-m-d H:i" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">关联配方</span>
+                <span class="value">
+                    {% if dispute.formula %}
+                    <a href="{% url 'formulas:formula_detail' dispute.formula.pk %}">{{ dispute.formula.name }}</a>
+                    {% else %}-{% endif %}
+                </span>
+            </div>
+            <div class="detail-item">
+                <span class="label">关联文献</span>
+                <span class="value">
+                    {% if dispute.literature %}
+                    <a href="{% url 'formulas:literature_detail' dispute.literature.pk %}">{{ dispute.literature.title }}</a>
+                    {% else %}-{% endif %}
+                </span>
+            </div>
+            {% if dispute.resolved_by %}
+            <div class="detail-item">
+                <span class="label">解决人</span>
+                <span class="value">{{ dispute.resolved_by.username|default:"-" }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">解决时间</span>
+                <span class="value">{{ dispute.resolved_at|date:"Y-m-d H:i" }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="detail-section">
+            <h3>争议描述</h3>
+            <p style="font-size:14px; line-height:1.8;">{{ dispute.description|linebreaksbr }}</p>
+        </div>
+
+        {% if dispute.conclusion %}
+        <div class="detail-section">
+            <h3>结论</h3>
+            <p style="font-size:14px; line-height:1.8; padding:12px; background:#eaf7ea; border-radius:5px;">{{ dispute.conclusion|linebreaksbr }}</p>
+        </div>
+        {% endif %}
+
+        <div class="detail-section">
+            <h3>各方观点</h3>
+            {% if arguments %}
+            {% regroup arguments by stance as stance_list %}
+            {% for stance_group in stance_list %}
+            <div style="margin-bottom:20px;">
+                <h4 style="font-size:15px; margin-bottom:10px;">
+                    {% if stance_group.grouper == 'support' %}
+                    <span class="badge badge-support">支持</span>
+                    {% elif stance_group.grouper == 'oppose' %}
+                    <span class="badge badge-oppose">反对</span>
+                    {% else %}
+                    <span class="badge badge-neutral">中立</span>
+                    {% endif %}
+                    <span style="color:#7a6b55; font-weight:normal; margin-left:6px;">（{{ stance_group.list|length }} 条观点）</span>
+                </h4>
+                {% for arg in stance_group.list %}
+                <div class="review-item" style="border-left-color:{% if arg.stance == 'support' %}#2d6a2d{% elif arg.stance == 'oppose' %}#a12828{% else %}#8a6d00{% endif %};">
+                    <div class="review-head">
+                        <span>
+                            {% if arg.stance == 'support' %}
+                            <span class="badge badge-support">支持</span>
+                            {% elif arg.stance == 'oppose' %}
+                            <span class="badge badge-oppose">反对</span>
+                            {% else %}
+                            <span class="badge badge-neutral">中立</span>
+                            {% endif %}
+                            <span style="margin-left:8px;">提交人：{{ arg.submitted_by.username|default:"-" }}</span>
+                        </span>
+                        <span>{{ arg.submitted_at|date:"Y-m-d H:i" }}</span>
+                    </div>
+                    <p style="font-size:14px; line-height:1.7;">{{ arg.viewpoint|linebreaksbr }}</p>
+                    {% if arg.evidence %}
+                    <p style="font-size:13px; color:#5a4a32; margin-top:6px;"><strong>证据材料：</strong>{{ arg.evidence|linebreaksbr }}</p>
+                    {% endif %}
+                    {% if arg.evidence_reference %}
+                    <p style="font-size:13px; color:#7a6b55; margin-top:4px;"><strong>证据出处：</strong>{{ arg.evidence_reference }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <p style="color:#7a6b55; font-size:14px;">暂无观点记录。</p>
+            {% endif %}
+
+            {% if can_edit %}
+            <div style="margin-top:20px; padding-top:16px; border-top:1px solid #e8dfc8;">
+                <h4 style="color:#4a3728; margin-bottom:12px; font-size:15px;">提交新观点</h4>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_argument">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="id_stance">立场</label>
+                            <select id="id_stance" name="stance" class="form-control">
+                                <option value="support">支持</option>
+                                <option value="oppose">反对</option>
+                                <option value="neutral">中立</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_evidence_reference">证据出处</label>
+                            <input type="text" id="id_evidence_reference" name="evidence_reference" class="form-control">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="id_viewpoint">观点内容</label>
+                            <textarea id="id_viewpoint" name="viewpoint" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="id_evidence">证据材料</label>
+                            <textarea id="id_evidence" name="evidence" class="form-control" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">提交观点</button>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="detail-section">
+            <h3>处理进度</h3>
+            {% if progress_records %}
+            <div class="timeline">
+                {% for record in progress_records %}
+                <div class="timeline-item">
+                    <div class="timeline-time">{{ record.operated_at|date:"Y-m-d H:i" }}</div>
+                    <div class="timeline-title">
+                        {% if record.old_status %}
+                        <span class="badge badge-{{ record.old_status }}">{{ record.get_old_status_display }}</span>
+                        <span style="margin:0 6px; color:#7a6b55;">→</span>
+                        {% endif %}
+                        <span class="badge badge-{{ record.new_status }}">{{ record.get_new_status_display }}</span>
+                    </div>
+                    <div class="timeline-meta">操作人：{{ record.operator.username|default:"系统" }}</div>
+                    {% if record.comment %}
+                    <div class="timeline-comment">{{ record.comment|linebreaksbr }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color:#7a6b55; font-size:14px;">暂无处理进度记录。</p>
+            {% endif %}
+        </div>
+
+        {% if can_edit %}
+        <div class="detail-section">
+            <h3>更新争议状态</h3>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_status">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="id_new_status">新状态</label>
+                        <select id="id_new_status" name="new_status" class="form-control">
+                            <option value="open"{% if dispute.status == 'open' %} selected{% endif %}>讨论中</option>
+                            <option value="evidence"{% if dispute.status == 'evidence' %} selected{% endif %}>证据收集中</option>
+                            <option value="review"{% if dispute.status == 'review' %} selected{% endif %}>专家评审中</option>
+                            <option value="resolved"{% if dispute.status == 'resolved' %} selected{% endif %}>已达成共识</option>
+                            <option value="unresolved"{% if dispute.status == 'unresolved' %} selected{% endif %}>暂无定论</option>
+                            <option value="withdrawn"{% if dispute.status == 'withdrawn' %} selected{% endif %}>已撤回</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="id_status_comment">处理说明</label>
+                        <textarea id="id_status_comment" name="comment" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">更新状态</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="detail-section">
+            <h3>更新结论</h3>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_conclusion">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="id_conclusion">结论</label>
+                        <textarea id="id_conclusion" name="conclusion" class="form-control" rows="3">{{ dispute.conclusion }}</textarea>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">保存结论</button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

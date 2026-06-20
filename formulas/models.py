@@ -539,6 +539,271 @@ class OperationLog(models.Model):
         return f'[{self.created_at}] {self.user} {self.get_operation_type_display()} {self.target_name}'
 
 
+ANNOTATION_TYPE_CHOICES = [
+    ('term', '术语释义'),
+    ('version_diff', '版本差异'),
+    ('synonym', '成分名称异名'),
+    ('authenticity', '出处真伪'),
+    ('usage', '用途判断'),
+    ('safety', '安全解读'),
+]
+
+DISPUTE_TYPE_CHOICES = [
+    ('authenticity', '文献真伪争议'),
+    ('ingredient', '成分辨识争议'),
+    ('proportion', '比例换算争议'),
+    ('dating', '年代断代争议'),
+    ('usage', '用途判断争议'),
+    ('safety', '安全解读争议'),
+    ('other', '其他争议'),
+]
+
+DISPUTE_STATUS_CHOICES = [
+    ('open', '讨论中'),
+    ('evidence', '证据收集中'),
+    ('review', '专家评审中'),
+    ('resolved', '已达成共识'),
+    ('unresolved', '暂无定论'),
+    ('withdrawn', '已撤回'),
+]
+
+
+class AcademicAnnotation(models.Model):
+    content_type = models.CharField(
+        '注释对象类型',
+        max_length=20,
+        choices=[
+            ('formula', '配方'),
+            ('literature', '文献'),
+        ],
+    )
+    formula = models.ForeignKey(
+        Formula,
+        on_delete=models.CASCADE,
+        verbose_name='关联配方',
+        related_name='annotations',
+        null=True,
+        blank=True,
+    )
+    literature = models.ForeignKey(
+        Literature,
+        on_delete=models.CASCADE,
+        verbose_name='关联文献',
+        related_name='annotations',
+        null=True,
+        blank=True,
+    )
+    annotation_type = models.CharField(
+        '注释类型',
+        max_length=20,
+        choices=ANNOTATION_TYPE_CHOICES,
+    )
+    title = models.CharField('注释标题', max_length=300)
+    content = models.TextField('注释内容')
+    reference = models.TextField('依据文献', blank=True)
+    reference_page = models.CharField('依据文献页码/章节', max_length=100, blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='注释人',
+        related_name='created_annotations',
+    )
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        verbose_name = '学术注释'
+        verbose_name_plural = '学术注释'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['content_type', 'annotation_type']),
+            models.Index(fields=['formula', 'created_at']),
+            models.Index(fields=['literature', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f'[{self.get_annotation_type_display()}] {self.title}'
+
+    def clean(self):
+        super().clean()
+        if self.content_type == 'formula' and not self.formula:
+            raise ValidationError({'formula': '配方类型注释必须关联配方'})
+        if self.content_type == 'literature' and not self.literature:
+            raise ValidationError({'literature': '文献类型注释必须关联文献'})
+        if not self.formula and not self.literature:
+            raise ValidationError('注释必须关联配方或文献')
+
+
+class AnnotationEditHistory(models.Model):
+    annotation = models.ForeignKey(
+        AcademicAnnotation,
+        on_delete=models.CASCADE,
+        verbose_name='所属注释',
+        related_name='edit_history',
+    )
+    old_content = models.TextField('修改前内容')
+    new_content = models.TextField('修改后内容')
+    edit_reason = models.CharField('修改原因', max_length=500, blank=True)
+    edited_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='修改人',
+    )
+    edited_at = models.DateTimeField('修改时间', auto_now_add=True)
+
+    class Meta:
+        verbose_name = '注释修改历史'
+        verbose_name_plural = '注释修改历史'
+        ordering = ['-edited_at']
+
+    def __str__(self):
+        return f'{self.annotation.title} - 修改于 {self.edited_at.strftime("%Y-%m-%d %H:%M")}'
+
+
+class Dispute(models.Model):
+    formula = models.ForeignKey(
+        Formula,
+        on_delete=models.CASCADE,
+        verbose_name='关联配方',
+        related_name='disputes',
+        null=True,
+        blank=True,
+    )
+    literature = models.ForeignKey(
+        Literature,
+        on_delete=models.CASCADE,
+        verbose_name='关联文献',
+        related_name='disputes',
+        null=True,
+        blank=True,
+    )
+    dispute_type = models.CharField(
+        '争议类型',
+        max_length=30,
+        choices=DISPUTE_TYPE_CHOICES,
+    )
+    title = models.CharField('争议标题', max_length=300)
+    description = models.TextField('争议描述')
+    status = models.CharField(
+        '处理状态',
+        max_length=20,
+        choices=DISPUTE_STATUS_CHOICES,
+        default='open',
+    )
+    conclusion = models.TextField('结论', blank=True)
+    initiated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='发起人',
+        related_name='initiated_disputes',
+    )
+    initiated_at = models.DateTimeField('发起时间', auto_now_add=True)
+    resolved_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='解决人',
+        related_name='resolved_disputes',
+    )
+    resolved_at = models.DateTimeField('解决时间', null=True, blank=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        verbose_name = '争议条目'
+        verbose_name_plural = '争议条目'
+        ordering = ['-initiated_at']
+        indexes = [
+            models.Index(fields=['dispute_type', 'status']),
+            models.Index(fields=['formula', 'initiated_at']),
+            models.Index(fields=['literature', 'initiated_at']),
+        ]
+
+    def __str__(self):
+        return f'[{self.get_dispute_type_display()}] {self.title}'
+
+
+class DisputeArgument(models.Model):
+    dispute = models.ForeignKey(
+        Dispute,
+        on_delete=models.CASCADE,
+        verbose_name='所属争议',
+        related_name='arguments',
+    )
+    stance = models.CharField(
+        '立场',
+        max_length=20,
+        choices=[
+            ('support', '支持'),
+            ('oppose', '反对'),
+            ('neutral', '中立'),
+        ],
+    )
+    viewpoint = models.TextField('观点内容')
+    evidence = models.TextField('证据材料', blank=True)
+    evidence_reference = models.CharField('证据出处', max_length=500, blank=True)
+    submitted_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='提交人',
+    )
+    submitted_at = models.DateTimeField('提交时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        verbose_name = '争议观点'
+        verbose_name_plural = '争议观点'
+        ordering = ['submitted_at']
+
+    def __str__(self):
+        return f'{self.dispute.title} - {self.get_stance_display()} - {self.submitted_by}'
+
+
+class DisputeProgress(models.Model):
+    dispute = models.ForeignKey(
+        Dispute,
+        on_delete=models.CASCADE,
+        verbose_name='所属争议',
+        related_name='progress_records',
+    )
+    old_status = models.CharField(
+        '原状态',
+        max_length=20,
+        choices=DISPUTE_STATUS_CHOICES,
+        blank=True,
+    )
+    new_status = models.CharField(
+        '新状态',
+        max_length=20,
+        choices=DISPUTE_STATUS_CHOICES,
+    )
+    comment = models.TextField('处理说明', blank=True)
+    operator = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='操作人',
+    )
+    operated_at = models.DateTimeField('操作时间', auto_now_add=True)
+
+    class Meta:
+        verbose_name = '争议处理记录'
+        verbose_name_plural = '争议处理记录'
+        ordering = ['operated_at']
+
+    def __str__(self):
+        return f'{self.dispute.title} - {self.get_new_status_display()}'
+
+
 class RiskAlert(models.Model):
     formula = models.ForeignKey(
         Formula,

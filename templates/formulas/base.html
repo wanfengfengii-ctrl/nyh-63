@@ -29,6 +29,8 @@
                     <li><a href="{% url 'formulas:statistics' %}">统计分析</a></li>
                     <li><a href="{% url 'formulas:data_export' %}">数据导出</a></li>
                     <li><a href="{% url 'formulas:risk_alerts' %}">风险预警</a></li>
+                    <li><a href="{% url 'formulas:annotation_list' %}">学术注释</a></li>
+                    <li><a href="{% url 'formulas:dispute_list' %}">争议考证</a></li>
                     {% if user.is_authenticated and perms.formulas.view_operationlog %}
                         <li><a href="{% url 'formulas:operation_logs' %}">操作日志</a></li>
                     {% endif %}

@@ -1,0 +1,110 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}争议验证 - 历史火药配方文献管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>争议验证</h2>
+    <p>对配方文献中的学术争议进行记录、讨论与验证</p>
+</div>
+
+<form class="filter-form" method="get">
+    <div class="filter-grid">
+        <div class="form-group">
+            <label for="id_dispute_type">争议类型</label>
+            <select id="id_dispute_type" name="dispute_type" class="form-control">
+                <option value="">全部类型</option>
+                <option value="authenticity"{% if request.GET.dispute_type == 'authenticity' %} selected{% endif %}>文献真伪争议</option>
+                <option value="ingredient"{% if request.GET.dispute_type == 'ingredient' %} selected{% endif %}>成分辨识争议</option>
+                <option value="proportion"{% if request.GET.dispute_type == 'proportion' %} selected{% endif %}>比例换算争议</option>
+                <option value="dating"{% if request.GET.dispute_type == 'dating' %} selected{% endif %}>年代断代争议</option>
+                <option value="usage"{% if request.GET.dispute_type == 'usage' %} selected{% endif %}>用途判断争议</option>
+                <option value="safety"{% if request.GET.dispute_type == 'safety' %} selected{% endif %}>安全解读争议</option>
+                <option value="other"{% if request.GET.dispute_type == 'other' %} selected{% endif %}>其他争议</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="id_status">处理状态</label>
+            <select id="id_status" name="status" class="form-control">
+                <option value="">全部状态</option>
+                <option value="open"{% if request.GET.status == 'open' %} selected{% endif %}>讨论中</option>
+                <option value="evidence"{% if request.GET.status == 'evidence' %} selected{% endif %}>证据收集中</option>
+                <option value="review"{% if request.GET.status == 'review' %} selected{% endif %}>专家评审中</option>
+                <option value="resolved"{% if request.GET.status == 'resolved' %} selected{% endif %}>已达成共识</option>
+                <option value="unresolved"{% if request.GET.status == 'unresolved' %} selected{% endif %}>暂无定论</option>
+                <option value="withdrawn"{% if request.GET.status == 'withdrawn' %} selected{% endif %}>已撤回</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="id_literature_source">关联文献</label>
+            <input type="text" id="id_literature_source" name="literature_source" class="form-control" placeholder="搜索关联文献标题" value="{{ request.GET.literature_source|default:'' }}">
+        </div>
+        <div class="form-group">
+            <label for="id_keyword">关键词</label>
+            <input type="text" id="id_keyword" name="keyword" class="form-control" placeholder="搜索争议标题或描述" value="{{ request.GET.keyword|default:'' }}">
+        </div>
+    </div>
+    <div style="display:flex; gap:10px;">
+        <button type="submit" class="btn btn-primary">筛选</button>
+        <a href="{% url 'formulas:dispute_list' %}" class="btn btn-secondary">重置</a>
+    </div>
+</form>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <p style="color:#7a6b55; font-size:14px;">共 <strong>{{ disputes|length }}</strong> 条争议记录</p>
+    {% if user.is_authenticated %}
+    <a href="{% url 'formulas:dispute_create' %}" class="btn btn-primary">发起争议</a>
+    {% endif %}
+</div>
+
+{% if disputes %}
+<table>
+    <thead>
+        <tr>
+            <th>争议标题</th>
+            <th>争议类型</th>
+            <th>处理状态</th>
+            <th>关联配方/文献</th>
+            <th>发起人</th>
+            <th>发起时间</th>
+            <th>观点数</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for d in disputes %}
+        <tr>
+            <td><strong>{{ d.title }}</strong></td>
+            <td><span class="badge badge-{{ d.dispute_type }}">{{ d.get_dispute_type_display }}</span></td>
+            <td><span class="badge badge-{{ d.status }}">{{ d.get_status_display }}</span></td>
+            <td>
+                {% if d.formula %}
+                <a href="{% url 'formulas:formula_detail' d.formula.pk %}">{{ d.formula.name }}</a>
+                {% endif %}
+                {% if d.formula and d.literature %}<br>{% endif %}
+                {% if d.literature %}
+                <a href="{% url 'formulas:literature_detail' d.literature.pk %}">{{ d.literature.title }}</a>
+                {% endif %}
+                {% if not d.formula and not d.literature %}-{% endif %}
+            </td>
+            <td>{{ d.initiated_by.username|default:"-" }}</td>
+            <td>{{ d.initiated_at|date:"Y-m-d H:i" }}</td>
+            <td>{{ d.arguments.count }}</td>
+            <td>
+                <div class="action-links">
+                    <a href="{% url 'formulas:dispute_detail' d.pk %}" class="btn btn-sm btn-secondary">查看</a>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <p>暂无争议记录。</p>
+    {% if user.is_authenticated %}
+    <p><a href="{% url 'formulas:dispute_create' %}" class="btn btn-primary">发起第一个争议</a></p>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
