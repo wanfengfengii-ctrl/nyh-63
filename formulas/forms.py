@@ -110,26 +110,15 @@ class SafetyReviewForm(forms.ModelForm):
 
 
 class FormulaFilterForm(forms.Form):
-    ERA_CHOICES = [
-        ('', '全部年代'),
-        ('tang', '唐代'),
-        ('song', '宋代'),
-        ('yuan', '元代'),
-        ('ming', '明代'),
-        ('qing', '清代'),
-        ('modern', '近代'),
-    ]
-
     USAGE_CHOICES = [('', '全部用途')] + list(Formula._meta.get_field('usage_category').choices)
     SAFETY_CHOICES = [('', '全部等级')] + list(Formula._meta.get_field('safety_level').choices)
     REVIEW_CHOICES = [('', '全部状态')] + list(Formula._meta.get_field('review_status').choices)
     ARCHIVE_CHOICES = [('', '全部归档状态')] + list(Formula._meta.get_field('archive_status').choices)
 
-    era = forms.ChoiceField(
-        choices=ERA_CHOICES,
+    era = forms.CharField(
         required=False,
         label='年代',
-        widget=forms.Select(attrs={'class': 'form-control'}),
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '如宋代、明代、清代等'}),
     )
     region = forms.CharField(
         required=False,

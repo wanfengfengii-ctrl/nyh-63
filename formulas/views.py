@@ -174,7 +174,10 @@ def formula_list(request):
         keyword = form.cleaned_data.get('keyword')
 
         if era:
-            queryset = queryset.filter(era__icontains=era)
+            queryset = queryset.filter(
+                Q(era__icontains=era)
+                | Q(literature__dynasty__icontains=era)
+            )
         if region:
             queryset = queryset.filter(region__icontains=region)
         if usage_category:
@@ -415,8 +418,25 @@ def formula_edit(request, pk):
 def formula_submit_review(request, pk):
     formula = get_object_or_404(Formula, pk=pk)
     if formula.review_status in ['draft', 'rejected', 'recheck']:
+        errors = []
+        if not formula.literature:
+            errors.append('请先关联文献出处后再提交评审')
+        if formula.safety_level == 'high' and not formula.safety_note.strip():
+            errors.append('高风险配方必须填写安全说明后才能提交评审')
+        if errors:
+            for err in errors:
+                messages.error(request, err)
+            return redirect('formulas:formula_detail', pk=pk)
         old_status = formula.review_status
         formula.review_status = 'pending'
+        try:
+            formula.full_clean()
+        except ValidationError as e:
+            for field, errors in e.message_dict.items():
+                for err in errors:
+                    messages.error(request, err)
+            formula.review_status = old_status
+            return redirect('formulas:formula_detail', pk=pk)
         formula.save()
         ReviewFlow.objects.create(
             formula=formula,
