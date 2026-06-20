@@ -276,6 +276,7 @@ def formula_detail(request, pk):
         'annotations': annotations,
         'disputes': disputes,
         'can_review': can_review,
+        'can_create': has_perm(request.user, 'create'),
         'user_role': user_role,
     }
     return render(request, 'formulas/formula_detail.html', context)
@@ -541,6 +542,7 @@ def literature_detail(request, pk):
         'disputes': disputes,
         'attachment_form': attachment_form,
         'can_upload': has_perm(request.user, 'upload'),
+        'can_create': has_perm(request.user, 'create'),
     }
     return render(request, 'formulas/literature_detail.html', context)
 
@@ -1095,6 +1097,9 @@ def annotation_list(request):
         'form': form,
         'annotations': queryset,
         'user_role': get_user_role(request.user) if request.user.is_authenticated else 'guest',
+        'can_create': has_perm(request.user, 'create'),
+        'can_update': has_perm(request.user, 'update'),
+        'can_delete': has_perm(request.user, 'delete'),
     }
     return render(request, 'formulas/annotation_list.html', context)
 
@@ -1111,6 +1116,8 @@ def annotation_detail(request, pk):
         'annotation': annotation,
         'edit_history': edit_history,
         'user_role': get_user_role(request.user) if request.user.is_authenticated else 'guest',
+        'can_update': has_perm(request.user, 'update'),
+        'can_delete': has_perm(request.user, 'delete'),
     }
     return render(request, 'formulas/annotation_detail.html', context)
 
@@ -1158,18 +1165,45 @@ def annotation_edit(request, pk):
     if request.method == 'POST':
         form = AnnotationEditForm(request.POST, instance=annotation)
         if form.is_valid():
-            old_content = annotation.content
-            annotation = form.save(commit=False)
-            annotation.save()
+            old_values = {
+                'title': annotation.title,
+                'content': annotation.content,
+                'reference': annotation.reference,
+                'reference_page': annotation.reference_page,
+            }
             edit_reason = form.cleaned_data.get('edit_reason', '')
-            if old_content != form.cleaned_data['content']:
+            annotation = form.save()
+
+            field_labels = {
+                'title': '标题',
+                'content': '内容',
+                'reference': '依据文献',
+                'reference_page': '依据页码',
+            }
+
+            changed_fields = [
+                f for f in ['title', 'content', 'reference', 'reference_page']
+                if old_values.get(f) != getattr(annotation, f)
+            ]
+
+            if changed_fields:
+                old_parts = []
+                new_parts = []
+                for field_name in changed_fields:
+                    label = field_labels[field_name]
+                    old_val = old_values.get(field_name, '')
+                    new_val = getattr(annotation, field_name)
+                    old_parts.append(f'[{label}] {old_val if old_val else "(空)"}')
+                    new_parts.append(f'[{label}] {new_val if new_val else "(空)"}')
+
                 AnnotationEditHistory.objects.create(
                     annotation=annotation,
-                    old_content=old_content,
-                    new_content=form.cleaned_data['content'],
+                    old_content='\n'.join(old_parts),
+                    new_content='\n'.join(new_parts),
                     edit_reason=edit_reason,
                     edited_by=request.user,
                 )
+
             log_operation(request.user, 'update', target_model='AcademicAnnotation',
                           target_id=annotation.pk, target_name=annotation.title,
                           description=f'编辑学术注释：{annotation.title}', request=request)
@@ -1245,6 +1279,7 @@ def dispute_list(request):
         'form': form,
         'disputes': queryset,
         'user_role': get_user_role(request.user) if request.user.is_authenticated else 'guest',
+        'can_create': has_perm(request.user, 'create'),
     }
     return render(request, 'formulas/dispute_list.html', context)
 

@@ -218,7 +218,7 @@
 
         <div class="detail-section">
             <h3>学术注释时间线 <small style="color:#7a6b55; font-weight:normal;">（{{ annotations|length }} 条）</small>
-                {% if user.is_authenticated %}
+                {% if can_create %}
                 <a href="{% url 'formulas:annotation_create' %}?content_type=formula&object_id={{ formula.pk }}" class="btn btn-sm btn-primary" style="margin-left:12px;">添加注释</a>
                 {% endif %}
             </h3>
@@ -246,7 +246,7 @@
 
         <div class="detail-section">
             <h3>争议考证 <small style="color:#7a6b55; font-weight:normal;">（{{ disputes|length }} 条）</small>
-                {% if user.is_authenticated %}
+                {% if can_create %}
                 <a href="{% url 'formulas:dispute_create' %}?content_type=formula&object_id={{ formula.pk }}" class="btn btn-sm btn-primary" style="margin-left:12px;">发起争议</a>
                 {% endif %}
             </h3>

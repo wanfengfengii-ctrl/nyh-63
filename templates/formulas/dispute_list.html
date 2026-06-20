@@ -52,7 +52,7 @@
 
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
     <p style="color:#7a6b55; font-size:14px;">共 <strong>{{ disputes|length }}</strong> 条争议记录</p>
-    {% if user.is_authenticated %}
+    {% if can_create %}
     <a href="{% url 'formulas:dispute_create' %}" class="btn btn-primary">发起争议</a>
     {% endif %}
 </div>
@@ -102,7 +102,7 @@
 {% else %}
 <div class="empty-state">
     <p>暂无争议记录。</p>
-    {% if user.is_authenticated %}
+    {% if can_create %}
     <p><a href="{% url 'formulas:dispute_create' %}" class="btn btn-primary">发起第一个争议</a></p>
     {% endif %}
 </div>
