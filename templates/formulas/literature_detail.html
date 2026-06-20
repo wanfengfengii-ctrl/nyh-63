@@ -51,6 +51,68 @@
         {% endif %}
 
         <div class="detail-section">
+            <h3>附件列表（{{ attachments|length }} 个）</h3>
+            {% if attachments %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>文件名</th>
+                        <th>类型</th>
+                        <th>说明</th>
+                        <th>上传人</th>
+                        <th>上传时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for att in attachments %}
+                    <tr>
+                        <td><strong>{{ att.file_name|default:att.file.name }}</strong></td>
+                        <td>{{ att.get_file_type_display }}</td>
+                        <td>{{ att.description|default:"-" }}</td>
+                        <td>{{ att.uploaded_by.username|default:"-" }}</td>
+                        <td>{{ att.uploaded_at|date:"Y-m-d H:i" }}</td>
+                        <td>
+                            <div class="action-links">
+                                <a href="{{ att.file.url }}" class="btn btn-sm btn-secondary" target="_blank">下载</a>
+                                {% if user.is_authenticated %}
+                                <a href="{% url 'formulas:attachment_delete' att.pk %}" class="btn btn-sm btn-danger" onclick="return confirm('确认删除此附件？');">删除</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color:#7a6b55; font-size:14px;">暂无附件。</p>
+            {% endif %}
+
+            {% if can_upload and attachment_form %}
+            <div style="margin-top:20px; padding-top:16px; border-top:1px solid #e8dfc8;">
+                <h4 style="color:#4a3728; margin-bottom:12px; font-size:15px;">上传新附件</h4>
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="form-grid">
+                        {% for field in attachment_form %}
+                        <div class="form-group {% if field.name in 'file,description' %}full-width{% endif %}">
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% if field.errors %}
+                            <div style="color:#a33; font-size:12px; margin-top:4px;">{{ field.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">上传附件</button>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="detail-section">
             <h3>引用此文献的配方（{{ formulas|length }} 条）</h3>
             {% if formulas %}
             <table>

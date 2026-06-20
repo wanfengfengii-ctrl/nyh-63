@@ -1,0 +1,60 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}操作审计日志 - 历史火药配方文献管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>操作审计日志</h2>
+    <p>查看系统内所有操作记录，支持按用户、类型、对象及时间范围筛选</p>
+</div>
+
+<form class="filter-form" method="get">
+    <div class="filter-grid">
+        {% for field in form %}
+        <div class="form-group">
+            {{ field.label_tag }}
+            {{ field }}
+        </div>
+        {% endfor %}
+    </div>
+    <div style="display:flex; gap:10px;">
+        <button type="submit" class="btn btn-primary">筛选</button>
+        <a href="{% url 'formulas:operation_logs' %}" class="btn btn-secondary">重置</a>
+    </div>
+</form>
+
+<p style="color:#7a6b55; font-size:14px; margin-bottom:16px;">共 <strong>{{ logs|length }}</strong> 条记录（最多显示 500 条）</p>
+
+{% if logs %}
+<table>
+    <thead>
+        <tr>
+            <th>操作时间</th>
+            <th>操作用户</th>
+            <th>操作类型</th>
+            <th>对象类型</th>
+            <th>对象名称</th>
+            <th>操作描述</th>
+            <th>IP地址</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in logs %}
+        <tr>
+            <td style="font-size:12px; color:#555;">{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
+            <td><strong>{{ log.user.username|default:"系统" }}</strong></td>
+            <td><span class="badge badge-pending">{{ log.get_operation_type_display }}</span></td>
+            <td style="color:#6b4423;">{{ log.target_model|default:"-" }}</td>
+            <td>{{ log.target_name|default:"-" }}</td>
+            <td style="font-size:13px; color:#555; max-width:300px;">{{ log.description|default:"-" }}</td>
+            <td style="font-family:monospace; font-size:12px;">{{ log.ip_address|default:"-" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <p>没有找到符合条件的操作日志。</p>
+</div>
+{% endif %}
+{% endblock %}

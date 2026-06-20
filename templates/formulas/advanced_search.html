@@ -1,0 +1,134 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}高级检索 - 历史火药配方文献管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>高级组合检索</h2>
+    <p>通过多字段组合条件精确查找配方</p>
+</div>
+
+<form class="filter-form" method="get">
+    <div class="form-grid" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="form-group">
+            {{ form.formula_no.label_tag }}
+            {{ form.formula_no }}
+        </div>
+        <div class="form-group">
+            {{ form.name.label_tag }}
+            {{ form.name }}
+        </div>
+        <div class="form-group">
+            {{ form.alias.label_tag }}
+            {{ form.alias }}
+        </div>
+        <div class="form-group">
+            {{ form.ingredient_name.label_tag }}
+            {{ form.ingredient_name }}
+        </div>
+        <div class="form-group">
+            {{ form.ingredient_percentage_min.label_tag }}
+            {{ form.ingredient_percentage_min }}
+        </div>
+        <div class="form-group">
+            {{ form.ingredient_percentage_max.label_tag }}
+            {{ form.ingredient_percentage_max }}
+        </div>
+        <div class="form-group">
+            {{ form.literature_title.label_tag }}
+            {{ form.literature_title }}
+        </div>
+        <div class="form-group">
+            {{ form.author.label_tag }}
+            {{ form.author }}
+        </div>
+        <div class="form-group">
+            {{ form.dynasty.label_tag }}
+            {{ form.dynasty }}
+        </div>
+        <div class="form-group">
+            {{ form.publication_year_min.label_tag }}
+            {{ form.publication_year_min }}
+        </div>
+        <div class="form-group">
+            {{ form.publication_year_max.label_tag }}
+            {{ form.publication_year_max }}
+        </div>
+        <div class="form-group">
+            {{ form.region.label_tag }}
+            {{ form.region }}
+        </div>
+        <div class="form-group">
+            {{ form.usage_category.label_tag }}
+            {{ form.usage_category }}
+        </div>
+        <div class="form-group">
+            {{ form.safety_level.label_tag }}
+            {{ form.safety_level }}
+        </div>
+        <div class="form-group">
+            {{ form.review_status.label_tag }}
+            {{ form.review_status }}
+        </div>
+        <div class="form-group">
+            {{ form.risk_score_min.label_tag }}
+            {{ form.risk_score_min }}
+        </div>
+        <div class="form-group">
+            {{ form.risk_score_max.label_tag }}
+            {{ form.risk_score_max }}
+        </div>
+        <div class="form-group">
+            {{ form.created_by.label_tag }}
+            {{ form.created_by }}
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1;">
+            {{ form.search_mode.label_tag }}
+            {{ form.search_mode }}
+        </div>
+    </div>
+    <div style="display:flex; gap:10px;">
+        <button type="submit" class="btn btn-primary">检索</button>
+        <a href="{% url 'formulas:advanced_search' %}" class="btn btn-secondary">重置</a>
+    </div>
+</form>
+
+{% if executed %}
+<div style="margin-bottom:16px;">
+    <p style="color:#7a6b55; font-size:14px;">共找到 <strong>{{ results|length }}</strong> 条结果</p>
+</div>
+{% if results %}
+<table>
+    <thead>
+        <tr>
+            <th>配方编号</th>
+            <th>名称</th>
+            <th>年代</th>
+            <th>用途</th>
+            <th>安全等级</th>
+            <th>评审状态</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for f in results %}
+        <tr>
+            <td><strong><a href="{% url 'formulas:formula_detail' f.pk %}">{{ f.formula_no }}</a></strong></td>
+            <td>
+                {{ f.name }}
+                {% if f.alias %}<br><small style="color:#999;">别名：{{ f.alias }}</small>{% endif %}
+            </td>
+            <td>{{ f.era|default:"-" }}{% if f.era_year %}（{{ f.era_year }}年）{% endif %}</td>
+            <td>{{ f.get_usage_category_display }}</td>
+            <td><span class="badge badge-{{ f.safety_level }}">{{ f.get_safety_level_display }}</span></td>
+            <td><span class="badge badge-{{ f.review_status }}">{{ f.get_review_status_display }}</span></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <p>没有找到符合条件的配方。</p>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

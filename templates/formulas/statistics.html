@@ -123,6 +123,127 @@
     </div>
 </div>
 
+<div class="two-col">
+    <div>
+        <div class="section-title">归档状态分布</div>
+        <div class="detail-card" style="padding:20px;">
+            {% for item in archive_stats %}
+            <div class="stat-chart-bar">
+                <div class="stat-row">
+                    <span class="name">
+                        {% if item.archive_status == 'active' %}活跃
+                        {% else %}已归档{% endif %}
+                    </span>
+                    <span class="count">{{ item.count }} 条</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:{% widthratio item.count total_count 100 %}%;"></div>
+                </div>
+            </div>
+            {% empty %}
+            <p style="color:#7a6b55;">暂无数据</p>
+            {% endfor %}
+        </div>
+
+        <div class="section-title">朝代分布（前15）</div>
+        <div class="detail-card" style="padding:20px;">
+            {% for item in dynasty_stats %}
+            <div class="stat-chart-bar">
+                <div class="stat-row">
+                    <span class="name">{{ item.era }}</span>
+                    <span class="count">{{ item.count }} 条</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:{% widthratio item.count total_count 100 %}%;"></div>
+                </div>
+            </div>
+            {% empty %}
+            <p style="color:#7a6b55;">暂无数据</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div>
+        <div class="section-title">团队角色分布</div>
+        <div class="detail-card" style="padding:20px;">
+            {% for item in role_stats %}
+            <div class="stat-chart-bar">
+                <div class="stat-row">
+                    <span class="name">
+                        <span class="role-chip role-chip-{{ item.role }}">
+                            {% if item.role == 'admin' %}系统管理员
+                            {% elif item.role == 'curator' %}文献馆员
+                            {% elif item.role == 'researcher' %}研究员
+                            {% elif item.role == 'reviewer' %}安全评审员
+                            {% elif item.role == 'auditor' %}审计员
+                            {% else %}访客{% endif %}
+                        </span>
+                    </span>
+                    <span class="count">{{ item.count }} 人</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:{% widthratio item.count role_stats|length 100 %}%;"></div>
+                </div>
+            </div>
+            {% empty %}
+            <p style="color:#7a6b55;">暂无数据</p>
+            {% endfor %}
+        </div>
+
+        <div class="section-title">预警统计</div>
+        <div class="detail-card" style="padding:20px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+                {% regroup alert_stats by level as level_groups %}
+                {% for group in level_groups %}
+                <div class="alert-box alert-box-{{ group.grouper }}">
+                    <div class="alert-box-level">
+                        {% if group.grouper == 'critical' %}严重
+                        {% elif group.grouper == 'warning' %}警告
+                        {% else %}提示{% endif %}
+                    </div>
+                    <div class="alert-box-count">
+                        {% for item in group.list %}{{ item.count }}{% if not forloop.last %} · {% endif %}{% endfor %}
+                    </div>
+                </div>
+                {% empty %}
+                <p style="color:#7a6b55; grid-column:1/-1;">暂无预警数据</p>
+                {% endfor %}
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>级别</th>
+                        <th>状态</th>
+                        <th style="text-align:right;">数量</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in alert_stats %}
+                    <tr>
+                        <td>
+                            {% if item.level == 'critical' %}严重
+                            {% elif item.level == 'warning' %}警告
+                            {% else %}提示{% endif %}
+                        </td>
+                        <td>
+                            {% if item.status == 'open' %}未处理
+                            {% elif item.status == 'acknowledged' %}已确认
+                            {% elif item.status == 'resolved' %}已解决
+                            {% else %}已忽略{% endif %}
+                        </td>
+                        <td style="text-align:right;">{{ item.count }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" style="text-align:center; color:#7a6b55;">暂无数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <div class="section-title">各成分在不同文献中的比例分布</div>
 <div class="detail-card" style="padding:20px;">
     {% if ingredient_distribution %}

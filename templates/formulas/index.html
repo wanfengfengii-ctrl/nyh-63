@@ -1,102 +1,334 @@
 {% extends "formulas/base.html" %}
 
-{% block title %}首页 - 历史火药配方文献管理系统{% endblock %}
+{% block title %}仪表盘 - 历史火药配方文献管理系统{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h2>系统概览</h2>
-    <p>记录历史火药配方文献、成分比例和实验安全评审</p>
+<div class="detail-card" style="padding:24px; margin-bottom:24px; background:linear-gradient(135deg, #f0e6d0 0%, #fff9ef 100%);">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+        <div>
+            <h2 style="color:#4a3728; font-size:22px; margin-bottom:8px;">
+                {% if user.is_authenticated %}欢迎回来，{{ user.username }}{% else %}欢迎使用历史火药配方文献管理系统{% endif %}
+            </h2>
+            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+                <span class="role-chip role-{{ user_role }}" style="display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; background:#e8dfc8; color:#4a3728;">
+                    {{ user_role_label }}
+                </span>
+                <span style="color:#7a6b55; font-size:14px;">当前时间：{% now "Y年m月d日 H:i" %}</span>
+            </div>
+        </div>
+        <div style="display:flex; gap:24px; flex-wrap:wrap;">
+            <div style="text-align:center; padding:12px 24px; background:#fff; border-radius:8px; border:1px solid #e8dfc8;">
+                <div style="font-size:28px; font-weight:700; color:#b33a3a;">{{ my_pending }}</div>
+                <div style="font-size:13px; color:#7a6b55; margin-top:4px;">我的待办</div>
+            </div>
+            <div style="text-align:center; padding:12px 24px; background:#fff; border-radius:8px; border:1px solid #e8dfc8;">
+                <div style="font-size:28px; font-weight:700; color:#8b6914;">{{ open_alerts_count }}</div>
+                <div style="font-size:13px; color:#7a6b55; margin-top:4px;">未处理预警</div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="stats-grid">
-    <div class="stat-card">
+    <a href="{% url 'formulas:formula_list' %}" class="stat-card" style="text-decoration:none; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
         <div class="stat-value">{{ total_formulas }}</div>
         <div class="stat-label">配方总数</div>
-    </div>
-    <div class="stat-card">
+    </a>
+    <a href="{% url 'formulas:literature_list' %}" class="stat-card" style="text-decoration:none; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
         <div class="stat-value">{{ total_literatures }}</div>
-        <div class="stat-label">文献来源</div>
-    </div>
+        <div class="stat-label">文献总数</div>
+    </a>
     <div class="stat-card">
-        <div class="stat-value">{{ pending_reviews }}</div>
-        <div class="stat-label">待评审配方</div>
+        <div class="stat-value">{{ total_attachments }}</div>
+        <div class="stat-label">附件总数</div>
     </div>
-    <div class="stat-card">
-        <div class="stat-value">{{ high_risk }}</div>
-        <div class="stat-label">高风险配方</div>
+    <a href="{% url 'formulas:formula_list' %}?review_status=pending" class="stat-card" style="text-decoration:none; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+        <div class="stat-value" style="color:#c9912a;">{{ pending_reviews }}</div>
+        <div class="stat-label">待评审</div>
+    </a>
+    <a href="{% url 'formulas:formula_list' %}?review_status=recheck" class="stat-card" style="text-decoration:none; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+        <div class="stat-value" style="color:#a97a1a;">{{ recheck_count }}</div>
+        <div class="stat-label">待复核</div>
+    </a>
+    <a href="{% url 'formulas:formula_list' %}?safety_level=high" class="stat-card" style="text-decoration:none; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+        <div class="stat-value" style="color:#b33a3a;">{{ high_risk }}</div>
+        <div class="stat-label">高风险</div>
+    </a>
+    <a href="{% url 'formulas:formula_list' %}?archive_status=archived" class="stat-card" style="text-decoration:none; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+        <div class="stat-value" style="color:#555;">{{ archived }}</div>
+        <div class="stat-label">已归档</div>
+    </a>
+    <a href="{% url 'formulas:risk_alerts' %}?status=open" class="stat-card" style="text-decoration:none; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+        <div class="stat-value" style="color:#e53935;">{{ open_alerts_count }}</div>
+        <div class="stat-label">未处理预警</div>
+    </a>
+</div>
+
+<div class="two-col">
+    <div>
+        <div class="section-title">风险预警面板</div>
+        <div class="detail-card" style="padding:0;">
+            {% if recent_alerts %}
+            {% for alert in recent_alerts %}
+            <div style="padding:14px 20px; border-bottom:1px solid #e8dfc8; {% if forloop.last %}border-bottom:none;{% endif %} {% if alert.status == 'open' %}{% if alert.level == 'critical' %}background:#fff5f5;{% elif alert.level == 'warning' %}background:#fffbf0;{% endif %}{% endif %}">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:0;">
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:4px;">
+                            {% if alert.level == 'critical' %}
+                            <span style="padding:2px 10px; border-radius:12px; font-size:12px; font-weight:500; background:#fde2e2; color:#a12828;">严重</span>
+                            {% elif alert.level == 'warning' %}
+                            <span style="padding:2px 10px; border-radius:12px; font-size:12px; font-weight:500; background:#fff3cd; color:#856404;">警告</span>
+                            {% else %}
+                            <span style="padding:2px 10px; border-radius:12px; font-size:12px; font-weight:500; background:#d6e8ff; color:#1a4e8a;">提示</span>
+                            {% endif %}
+                            {% if alert.status == 'open' %}
+                            <span style="padding:2px 10px; border-radius:12px; font-size:12px; font-weight:500; background:#fde2e2; color:#a12828;">未处理</span>
+                            {% elif alert.status == 'acknowledged' %}
+                            <span style="padding:2px 10px; border-radius:12px; font-size:12px; font-weight:500; background:#fff3cd; color:#856404;">已确认</span>
+                            {% elif alert.status == 'resolved' %}
+                            <span style="padding:2px 10px; border-radius:12px; font-size:12px; font-weight:500; background:#e0f2e0; color:#2d6a2d;">已解决</span>
+                            {% else %}
+                            <span style="padding:2px 10px; border-radius:12px; font-size:12px; font-weight:500; background:#e0e0e0; color:#555;">已忽略</span>
+                            {% endif %}
+                            <strong style="color:#4a3728; font-size:14px;">{{ alert.title }}</strong>
+                        </div>
+                        {% if alert.formula %}
+                        <div style="font-size:12px; color:#7a6b55; margin-bottom:4px;">
+                            关联配方：<a href="{% url 'formulas:formula_detail' alert.formula.pk %}" style="color:#6b4423;">{{ alert.formula.formula_no }} - {{ alert.formula.name }}</a>
+                        </div>
+                        {% endif %}
+                        {% if alert.message %}
+                        <div style="font-size:13px; color:#5a4a32; line-height:1.5;">{{ alert.message|truncatechars:80 }}</div>
+                        {% endif %}
+                    </div>
+                    <div style="font-size:12px; color:#7a6b55; white-space:nowrap;">
+                        {{ alert.created_at|date:"m-d H:i" }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            <div style="padding:10px 20px; background:#faf6ed; border-top:1px solid #e8dfc8;">
+                <a href="{% url 'formulas:risk_alerts' %}" style="font-size:13px; color:#6b4423;">查看全部预警 →</a>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <p>暂无预警信息</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="section-title">最近录入配方</div>
+        {% if recent_formulas %}
+        <table>
+            <thead>
+                <tr>
+                    <th>配方编号</th>
+                    <th>名称</th>
+                    <th>用途</th>
+                    <th>安全等级</th>
+                    <th>评审状态</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in recent_formulas %}
+                <tr>
+                    <td><a href="{% url 'formulas:formula_detail' f.pk %}" style="font-weight:600;">{{ f.formula_no }}</a></td>
+                    <td>{{ f.name }}</td>
+                    <td>{{ f.get_usage_category_display }}</td>
+                    <td><span class="badge badge-{{ f.safety_level }}">{{ f.get_safety_level_display }}</span></td>
+                    <td><span class="badge badge-{{ f.review_status }}">{{ f.get_review_status_display }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="detail-card">
+            <div class="empty-state">
+                <p>暂无配方数据。</p>
+                {% if user.is_authenticated %}
+                <p><a href="{% url 'formulas:formula_create' %}" class="btn btn-primary">新建第一个配方</a></p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
-    <div class="stat-card">
-        <div class="stat-value">{{ archived }}</div>
-        <div class="stat-label">已归档配方</div>
+
+    <div>
+        <div class="section-title">近期操作动态</div>
+        <div class="detail-card" style="padding:0;">
+            {% if recent_logs %}
+            {% for log in recent_logs %}
+            <div style="padding:12px 20px; border-bottom:1px solid #e8dfc8; {% if forloop.last %}border-bottom:none;{% endif %}">
+                <div style="display:flex; gap:10px; align-items:flex-start;">
+                    <div style="width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg, #8b6914, #c9a227); display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px; font-weight:600; flex-shrink:0;">
+                        {{ log.user.username|slice:":1"|upper }}
+                    </div>
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-size:13px; color:#2c2c2c; margin-bottom:2px;">
+                            <strong>{{ log.user.username }}</strong>
+                            <span style="padding:2px 8px; border-radius:10px; font-size:11px; background:#f0e6d0; color:#6b4423; margin:0 6px;">{{ log.get_operation_type_display }}</span>
+                            {{ log.description|truncatechars:40 }}
+                        </div>
+                        {% if log.target_name %}
+                        <div style="font-size:12px; color:#7a6b55;">
+                            {{ log.target_model }}：{{ log.target_name|truncatechars:30 }}
+                        </div>
+                        {% endif %}
+                        <div style="font-size:11px; color:#9a8b75; margin-top:2px;">
+                            {{ log.created_at|date:"Y-m-d H:i:s" }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% if perms.formulas.view_operationlog %}
+            <div style="padding:10px 20px; background:#faf6ed; border-top:1px solid #e8dfc8;">
+                <a href="{% url 'formulas:operation_logs' %}" style="font-size:13px; color:#6b4423;">查看全部操作日志 →</a>
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="empty-state">
+                <p>暂无操作记录</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="section-title">快速入口</div>
+        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px;">
+            <a href="{% url 'formulas:formula_list' %}" class="stat-card" style="text-decoration:none; text-align:center; padding:16px 10px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+                <div style="font-size:28px; margin-bottom:6px;">📋</div>
+                <div style="font-size:13px; color:#4a3728; font-weight:500;">配方列表</div>
+            </a>
+            <a href="{% url 'formulas:literature_list' %}" class="stat-card" style="text-decoration:none; text-align:center; padding:16px 10px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+                <div style="font-size:28px; margin-bottom:6px;">📚</div>
+                <div style="font-size:13px; color:#4a3728; font-weight:500;">文献来源</div>
+            </a>
+            <a href="{% url 'formulas:statistics' %}" class="stat-card" style="text-decoration:none; text-align:center; padding:16px 10px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+                <div style="font-size:28px; margin-bottom:6px;">📊</div>
+                <div style="font-size:13px; color:#4a3728; font-weight:500;">统计分析</div>
+            </a>
+            <a href="{% url 'formulas:advanced_search' %}" class="stat-card" style="text-decoration:none; text-align:center; padding:16px 10px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+                <div style="font-size:28px; margin-bottom:6px;">🔍</div>
+                <div style="font-size:13px; color:#4a3728; font-weight:500;">高级检索</div>
+            </a>
+            <a href="{% url 'formulas:formula_compare' %}" class="stat-card" style="text-decoration:none; text-align:center; padding:16px 10px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+                <div style="font-size:28px; margin-bottom:6px;">⚖️</div>
+                <div style="font-size:13px; color:#4a3728; font-weight:500;">配方对比</div>
+            </a>
+            <a href="{% url 'formulas:risk_alerts' %}" class="stat-card" style="text-decoration:none; text-align:center; padding:16px 10px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+                <div style="font-size:28px; margin-bottom:6px;">🚨</div>
+                <div style="font-size:13px; color:#4a3728; font-weight:500;">风险预警</div>
+            </a>
+            <a href="{% url 'formulas:data_export' %}" class="stat-card" style="text-decoration:none; text-align:center; padding:16px 10px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+                <div style="font-size:28px; margin-bottom:6px;">📤</div>
+                <div style="font-size:13px; color:#4a3728; font-weight:500;">数据导出</div>
+            </a>
+            {% if user.is_authenticated %}
+            <a href="{% url 'formulas:formula_create' %}" class="stat-card" style="text-decoration:none; text-align:center; padding:16px 10px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+                <div style="font-size:28px; margin-bottom:6px;">➕</div>
+                <div style="font-size:13px; color:#4a3728; font-weight:500;">新建配方</div>
+            </a>
+            <a href="{% url 'formulas:literature_create' %}" class="stat-card" style="text-decoration:none; text-align:center; padding:16px 10px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+                <div style="font-size:28px; margin-bottom:6px;">📖</div>
+                <div style="font-size:13px; color:#4a3728; font-weight:500;">添加文献</div>
+            </a>
+            <a href="{% url 'formulas:user_profile' %}" class="stat-card" style="text-decoration:none; text-align:center; padding:16px 10px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+                <div style="font-size:28px; margin-bottom:6px;">👤</div>
+                <div style="font-size:13px; color:#4a3728; font-weight:500;">个人中心</div>
+            </a>
+            <a href="/admin/" class="stat-card" style="text-decoration:none; text-align:center; padding:16px 10px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+                <div style="font-size:28px; margin-bottom:6px;">⚙️</div>
+                <div style="font-size:13px; color:#4a3728; font-weight:500;">管理后台</div>
+            </a>
+            {% else %}
+            <a href="{% url 'login' %}" class="stat-card" style="text-decoration:none; text-align:center; padding:16px 10px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+                <div style="font-size:28px; margin-bottom:6px;">🔐</div>
+                <div style="font-size:13px; color:#4a3728; font-weight:500;">登录系统</div>
+            </a>
+            <a href="{% url 'formulas:formula_list' %}" class="stat-card" style="text-decoration:none; text-align:center; padding:16px 10px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+                <div style="font-size:28px; margin-bottom:6px;">📑</div>
+                <div style="font-size:13px; color:#4a3728; font-weight:500;">浏览数据</div>
+            </a>
+            <a href="{% url 'formulas:statistics' %}" class="stat-card" style="text-decoration:none; text-align:center; padding:16px 10px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,55,40,0.12)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+                <div style="font-size:28px; margin-bottom:6px;">📈</div>
+                <div style="font-size:13px; color:#4a3728; font-weight:500;">数据统计</div>
+            </a>
+            {% endif %}
+        </div>
     </div>
 </div>
 
-<div class="section-title">最近录入的配方</div>
-{% if recent_formulas %}
-<table>
-    <thead>
-        <tr>
-            <th>配方编号</th>
-            <th>名称</th>
-            <th>年代</th>
-            <th>来源地区</th>
-            <th>用途</th>
-            <th>安全等级</th>
-            <th>评审状态</th>
-            <th>操作</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for f in recent_formulas %}
-        <tr>
-            <td><strong>{{ f.formula_no }}</strong></td>
-            <td>{{ f.name }}</td>
-            <td>{{ f.era|default:"-" }}</td>
-            <td>{{ f.region|default:"-" }}</td>
-            <td>{{ f.get_usage_category_display }}</td>
-            <td><span class="badge badge-{{ f.safety_level }}">{{ f.get_safety_level_display }}</span></td>
-            <td><span class="badge badge-{{ f.review_status }}">{{ f.get_review_status_display }}</span></td>
-            <td><a href="{% url 'formulas:formula_detail' f.pk %}" class="btn btn-sm btn-secondary">查看</a></td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% else %}
-<div class="empty-state">
-    <p>暂无配方数据。</p>
-    {% if user.is_authenticated %}
-    <p><a href="{% url 'formulas:formula_create' %}" class="btn btn-primary">新建第一个配方</a></p>
-    {% endif %}
+<div class="section-title">基础数据分布统计</div>
+<div class="two-col">
+    <div>
+        <div class="detail-card" style="padding:20px;">
+            <div style="font-size:15px; font-weight:600; color:#4a3728; margin-bottom:16px;">按用途分类</div>
+            {% for item in usage_stats %}
+            <div class="stat-chart-bar">
+                <div class="stat-row">
+                    <span class="name">
+                        {% if item.usage_category == 'military' %}军用
+                        {% elif item.usage_category == 'fireworks' %}烟花
+                        {% elif item.usage_category == 'mining' %}采矿
+                        {% elif item.usage_category == 'signal' %}信号
+                        {% elif item.usage_category == 'medical' %}医用
+                        {% else %}其他{% endif %}
+                    </span>
+                    <span class="count">{{ item.count }} 条</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:{% widthratio item.count total_formulas 100 %}%;"></div>
+                </div>
+            </div>
+            {% empty %}
+            <p style="color:#7a6b55;">暂无数据</p>
+            {% endfor %}
+        </div>
+    </div>
+    <div>
+        <div class="detail-card" style="padding:20px;">
+            <div style="font-size:15px; font-weight:600; color:#4a3728; margin-bottom:16px;">按安全等级</div>
+            {% for item in safety_stats %}
+            <div class="stat-chart-bar">
+                <div class="stat-row">
+                    <span class="name">
+                        {% if item.safety_level == 'low' %}低风险
+                        {% elif item.safety_level == 'medium' %}中风险
+                        {% else %}高风险{% endif %}
+                    </span>
+                    <span class="count">{{ item.count }} 条</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:{% widthratio item.count total_formulas 100 %}%;"></div>
+                </div>
+            </div>
+            {% empty %}
+            <p style="color:#7a6b55;">暂无数据</p>
+            {% endfor %}
+        </div>
+    </div>
 </div>
-{% endif %}
 
-<div class="section-title">快速入口</div>
-<div class="stats-grid">
-    <a href="{% url 'formulas:formula_list' %}" class="stat-card" style="text-decoration:none;">
-        <div class="stat-value" style="font-size:20px;">📋</div>
-        <div class="stat-label">浏览所有配方</div>
-    </a>
-    <a href="{% url 'formulas:literature_list' %}" class="stat-card" style="text-decoration:none;">
-        <div class="stat-value" style="font-size:20px;">📚</div>
-        <div class="stat-label">文献来源管理</div>
-    </a>
-    <a href="{% url 'formulas:statistics' %}" class="stat-card" style="text-decoration:none;">
-        <div class="stat-value" style="font-size:20px;">📊</div>
-        <div class="stat-label">统计分布分析</div>
-    </a>
-    {% if user.is_authenticated %}
-    <a href="{% url 'formulas:formula_create' %}" class="stat-card" style="text-decoration:none;">
-        <div class="stat-value" style="font-size:20px;">➕</div>
-        <div class="stat-label">添加新配方</div>
-    </a>
-    <a href="{% url 'formulas:literature_create' %}" class="stat-card" style="text-decoration:none;">
-        <div class="stat-value" style="font-size:20px;">📖</div>
-        <div class="stat-label">添加新文献</div>
-    </a>
-    <a href="/admin/" class="stat-card" style="text-decoration:none;">
-        <div class="stat-value" style="font-size:20px;">⚙️</div>
-        <div class="stat-label">管理后台</div>
-    </a>
-    {% endif %}
+<div class="detail-card" style="padding:20px; margin-top:24px;">
+    <div style="font-size:15px; font-weight:600; color:#4a3728; margin-bottom:16px;">按评审状态</div>
+    {% for item in review_stats %}
+    <div class="stat-chart-bar">
+        <div class="stat-row">
+            <span class="name">
+                {% if item.review_status == 'draft' %}草稿
+                {% elif item.review_status == 'pending' %}待评审
+                {% elif item.review_status == 'recheck' %}待复核
+                {% elif item.review_status == 'approved' %}评审通过
+                {% else %}评审驳回{% endif %}
+            </span>
+            <span class="count">{{ item.count }} 条</span>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" style="width:{% widthratio item.count total_formulas 100 %}%;"></div>
+        </div>
+    </div>
+    {% empty %}
+    <p style="color:#7a6b55;">暂无数据</p>
+    {% endfor %}
 </div>
 {% endblock %}

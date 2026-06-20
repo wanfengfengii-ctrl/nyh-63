@@ -36,10 +36,12 @@
         <tr>
             <th>配方编号</th>
             <th>名称</th>
+            <th>版本</th>
             <th>年代</th>
             <th>来源地区</th>
             <th>用途</th>
             <th>安全等级</th>
+            <th>风险分值</th>
             <th>评审状态</th>
             <th>归档</th>
             <th>操作</th>
@@ -53,10 +55,16 @@
                 {{ f.name }}
                 {% if f.alias %}<br><small style="color:#999;">别名：{{ f.alias }}</small>{% endif %}
             </td>
+            <td>v{{ f.version }}</td>
             <td>{{ f.era|default:"-" }}</td>
             <td>{{ f.region|default:"-" }}</td>
             <td>{{ f.get_usage_category_display }}</td>
             <td><span class="badge badge-{{ f.safety_level }}">{{ f.get_safety_level_display }}</span></td>
+            <td>
+                <span class="badge badge-{% if f.risk_score >= 70 %}high{% elif f.risk_score >= 40 %}medium{% else %}low{% endif %}">
+                    {{ f.risk_score }}
+                </span>
+            </td>
             <td><span class="badge badge-{{ f.review_status }}">{{ f.get_review_status_display }}</span></td>
             <td><span class="badge badge-{{ f.archive_status }}">{{ f.get_archive_status_display }}</span></td>
             <td>

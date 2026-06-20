@@ -7,6 +7,14 @@
     <a href="{% url 'formulas:formula_list' %}" class="btn btn-secondary btn-sm">← 返回列表</a>
     {% if user.is_authenticated %}
     <a href="{% url 'formulas:formula_edit' formula.pk %}" class="btn btn-primary btn-sm" style="margin-left:8px;">编辑配方</a>
+    {% if formula.review_status in 'draft,rejected,recheck' %}
+    <a href="{% url 'formulas:formula_submit_review' formula.pk %}" class="btn btn-primary btn-sm" style="margin-left:8px;">提交评审</a>
+    {% endif %}
+    {% if formula.archive_status == 'active' and formula.review_status == 'approved' %}
+    <a href="{% url 'formulas:formula_toggle_archive' formula.pk %}" class="btn btn-secondary btn-sm" style="margin-left:8px;">归档</a>
+    {% elif formula.archive_status == 'archived' %}
+    <a href="{% url 'formulas:formula_toggle_archive' formula.pk %}" class="btn btn-secondary btn-sm" style="margin-left:8px;">解档</a>
+    {% endif %}
     {% endif %}
 </div>
 
@@ -17,11 +25,13 @@
             {% if formula.alias %}别名：{{ formula.alias }} · {% endif %}
             录入时间：{{ formula.created_at|date:"Y-m-d H:i" }}
             {% if formula.created_by %}· 录入人：{{ formula.created_by.username }}{% endif %}
+            · 版本：v{{ formula.version }}
         </div>
         <div style="margin-top:8px;">
             <span class="badge badge-{{ formula.safety_level }}">{{ formula.get_safety_level_display }}</span>
             <span class="badge badge-{{ formula.review_status }}" style="margin-left:6px;">{{ formula.get_review_status_display }}</span>
             <span class="badge badge-{{ formula.archive_status }}" style="margin-left:6px;">{{ formula.get_archive_status_display }}</span>
+            <span class="badge badge-{% if formula.risk_score >= 70 %}high{% elif formula.risk_score >= 40 %}medium{% else %}low{% endif %}" style="margin-left:6px;">风险分值：{{ formula.risk_score }}</span>
         </div>
     </div>
     <div class="detail-body">
@@ -93,6 +103,38 @@
         {% endif %}
 
         <div class="detail-section">
+            <h3>评审流程时间线</h3>
+            {% if review_flows %}
+            <div style="padding-left:8px;">
+                {% for flow in review_flows %}
+                <div style="position:relative; padding-left:24px; padding-bottom:16px; border-left:2px solid #d4c4a8;">
+                    <div style="position:absolute; left:-7px; top:0; width:12px; height:12px; background:#8b6914; border-radius:50%;"></div>
+                    <div style="font-size:13px; color:#7a6b55;">{{ flow.created_at|date:"Y-m-d H:i" }}</div>
+                    <div style="font-weight:500; color:#4a3728; margin:4px 0;">
+                        {{ flow.get_step_display }}
+                        <span style="font-weight:normal; font-size:13px; color:#7a6b55; margin-left:8px;">
+                            操作人：{{ flow.operator.username|default:"系统" }}
+                        </span>
+                    </div>
+                    <div style="font-size:13px;">
+                        {% if flow.from_status %}
+                        <span class="badge badge-{{ flow.from_status }}">{{ flow.get_from_status_display }}</span>
+                        <span style="margin:0 6px; color:#7a6b55;">→</span>
+                        {% endif %}
+                        <span class="badge badge-{{ flow.to_status }}">{{ flow.get_to_status_display }}</span>
+                    </div>
+                    {% if flow.comment %}
+                    <div style="font-size:13px; color:#555; margin-top:6px; padding:8px; background:#faf6ed; border-radius:4px;">{{ flow.comment|linebreaksbr }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color:#7a6b55; font-size:14px;">暂无评审流程记录。</p>
+            {% endif %}
+        </div>
+
+        <div class="detail-section">
             <h3>安全评审记录</h3>
             {% if reviews %}
             {% for review in reviews %}
@@ -118,7 +160,7 @@
             <p style="color:#7a6b55; font-size:14px;">暂无评审记录。</p>
             {% endif %}
 
-            {% if user.is_authenticated %}
+            {% if can_review and user.is_authenticated %}
             <div style="margin-top:20px; padding-top:16px; border-top:1px solid #e8dfc8;">
                 <h4 style="color:#4a3728; margin-bottom:12px; font-size:15px;">提交新评审</h4>
                 <form method="post">
@@ -139,6 +181,76 @@
                     </div>
                 </form>
             </div>
+            {% endif %}
+        </div>
+
+        <div class="detail-section">
+            <h3>版本历史</h3>
+            {% if versions %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>版本号</th>
+                        <th>配方名称</th>
+                        <th>安全等级</th>
+                        <th>创建人</th>
+                        <th>快照时间</th>
+                        <th>变更说明</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in versions %}
+                    <tr>
+                        <td><strong>v{{ v.version }}</strong></td>
+                        <td>{{ v.name }}{% if v.alias %}（{{ v.alias }}）{% endif %}</td>
+                        <td><span class="badge badge-{{ v.safety_level }}">{{ v.get_safety_level_display }}</span></td>
+                        <td>{{ v.created_by.username|default:"-" }}</td>
+                        <td>{{ v.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>{{ v.change_note|default:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color:#7a6b55; font-size:14px;">暂无版本历史。</p>
+            {% endif %}
+        </div>
+
+        <div class="detail-section">
+            <h3>风险预警记录</h3>
+            {% if risk_alerts %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>预警等级</th>
+                        <th>类型</th>
+                        <th>标题</th>
+                        <th>风险分值</th>
+                        <th>状态</th>
+                        <th>触发时间</th>
+                        <th>处理人</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for alert in risk_alerts %}
+                    <tr>
+                        <td>
+                            <span class="badge badge-{% if alert.level == 'critical' %}high{% elif alert.level == 'warning' %}medium{% else %}low{% endif %}">
+                                {{ alert.get_level_display }}
+                            </span>
+                        </td>
+                        <td>{{ alert.get_alert_type_display }}</td>
+                        <td>{{ alert.title }}</td>
+                        <td>{{ alert.risk_score }}</td>
+                        <td>{{ alert.get_status_display }}</td>
+                        <td>{{ alert.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>{{ alert.handled_by.username|default:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color:#7a6b55; font-size:14px;">暂无风险预警记录。</p>
             {% endif %}
         </div>
     </div>

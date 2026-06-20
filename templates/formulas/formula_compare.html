@@ -1,0 +1,205 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}配方对比 - 历史火药配方文献管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>配方版本对比</h2>
+    <p>选择两个配方或同一配方的不同版本进行详细对比</p>
+</div>
+
+<form class="filter-form" method="get">
+    <div class="form-grid">
+        <div class="form-group">
+            {{ form.formula_a.label_tag }}
+            {{ form.formula_a }}
+        </div>
+        <div class="form-group">
+            {{ form.formula_b.label_tag }}
+            {{ form.formula_b }}
+        </div>
+        <div class="form-group">
+            {{ form.version_a.label_tag }}
+            {{ form.version_a }}
+        </div>
+        <div class="form-group">
+            {{ form.version_b.label_tag }}
+            {{ form.version_b }}
+        </div>
+    </div>
+    {% if form.non_field_errors %}
+    <div style="color:#a33; font-size:13px; margin-bottom:12px;">
+        {% for err in form.non_field_errors %}{{ err }}{% endfor %}
+    </div>
+    {% endif %}
+    <div style="display:flex; gap:10px;">
+        <button type="submit" class="btn btn-primary">开始对比</button>
+        <a href="{% url 'formulas:formula_compare' %}" class="btn btn-secondary">重置</a>
+    </div>
+</form>
+
+{% if comparison %}
+<div class="detail-card">
+    <div class="detail-header">
+        <h2>对比结果</h2>
+        <div class="meta">
+            A: {{ comparison.a.name }} (v{{ comparison.a.version_num }})
+            · B: {{ comparison.b.name }} (v{{ comparison.b.version_num }})
+        </div>
+    </div>
+    <div class="detail-body">
+        <h3 class="section-title">基本信息对比</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:25%;">对比项</th>
+                    <th style="width:37.5%;">A: {{ comparison.a.formula.formula_no }}</th>
+                    <th style="width:37.5%;">B: {{ comparison.b.formula.formula_no }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>配方名称</strong></td>
+                    <td>{{ comparison.a.name }}</td>
+                    <td>{{ comparison.b.name }}</td>
+                </tr>
+                <tr>
+                    <td><strong>别名</strong></td>
+                    <td>{{ comparison.a.alias|default:"-" }}</td>
+                    <td>{{ comparison.b.alias|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <td><strong>版本号</strong></td>
+                    <td>v{{ comparison.a.version_num }}</td>
+                    <td>v{{ comparison.b.version_num }}</td>
+                </tr>
+                <tr>
+                    <td><strong>文献出处</strong></td>
+                    <td>{{ comparison.a.formula.literature|default:"-" }}</td>
+                    <td>{{ comparison.b.formula.literature|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <td><strong>年代</strong></td>
+                    <td>{{ comparison.a.formula.era|default:"-" }}{% if comparison.a.formula.era_year %}（{{ comparison.a.formula.era_year }}年）{% endif %}</td>
+                    <td>{{ comparison.b.formula.era|default:"-" }}{% if comparison.b.formula.era_year %}（{{ comparison.b.formula.era_year }}年）{% endif %}</td>
+                </tr>
+                <tr>
+                    <td><strong>来源地区</strong></td>
+                    <td>{{ comparison.a.formula.region|default:"-" }}</td>
+                    <td>{{ comparison.b.formula.region|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <td><strong>用途分类</strong></td>
+                    <td>{{ comparison.a.formula.get_usage_category_display }}</td>
+                    <td>{{ comparison.b.formula.get_usage_category_display }}</td>
+                </tr>
+                <tr>
+                    <td><strong>安全等级</strong></td>
+                    <td><span class="badge badge-{{ comparison.a.safety_level }}">{{ comparison.a.formula.get_safety_level_display }}</span></td>
+                    <td><span class="badge badge-{{ comparison.b.safety_level }}">{{ comparison.b.formula.get_safety_level_display }}</span></td>
+                </tr>
+                <tr>
+                    <td><strong>评审状态</strong></td>
+                    <td><span class="badge badge-{{ comparison.a.formula.review_status }}">{{ comparison.a.formula.get_review_status_display }}</span></td>
+                    <td><span class="badge badge-{{ comparison.b.formula.review_status }}">{{ comparison.b.formula.get_review_status_display }}</span></td>
+                </tr>
+                <tr>
+                    <td><strong>最后更新</strong></td>
+                    <td>{{ comparison.a.created_at|date:"Y-m-d H:i" }}</td>
+                    <td>{{ comparison.b.created_at|date:"Y-m-d H:i" }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 class="section-title">共同成分对比</h3>
+        {% if comparison.common_ingredients %}
+        <table>
+            <thead>
+                <tr>
+                    <th>成分名称</th>
+                    <th>A 占比(%)</th>
+                    <th>B 占比(%)</th>
+                    <th>差值 (A - B)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ing in comparison.common_ingredients %}
+                <tr>
+                    <td><strong>{{ ing.name }}</strong></td>
+                    <td>{{ ing.pct_a }}</td>
+                    <td>{{ ing.pct_b }}</td>
+                    <td>
+                        {% if ing.diff > 0 %}
+                        <span style="color:#2d6a2d; font-weight:600;">+{{ ing.diff }}</span>
+                        {% elif ing.diff < 0 %}
+                        <span style="color:#a12828; font-weight:600;">{{ ing.diff }}</span>
+                        {% else %}
+                        <span style="color:#7a6b55;">0</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <p>两个配方没有共同成分。</p>
+        </div>
+        {% endif %}
+
+        <div class="two-col" style="margin-top:24px;">
+            <div>
+                <h3 class="section-title">仅 A 独有成分</h3>
+                {% if comparison.only_a %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>成分名称</th>
+                            <th>占比(%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ing in comparison.only_a %}
+                        <tr>
+                            <td>{{ ing.name }}{% if ing.chinese_name %} <small style="color:#7a6b55;">（{{ ing.chinese_name }}）</small>{% endif %}</td>
+                            <td>{{ ing.percentage }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">
+                    <p>A 没有独有成分。</p>
+                </div>
+                {% endif %}
+            </div>
+            <div>
+                <h3 class="section-title">仅 B 独有成分</h3>
+                {% if comparison.only_b %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>成分名称</th>
+                            <th>占比(%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ing in comparison.only_b %}
+                        <tr>
+                            <td>{{ ing.name }}{% if ing.chinese_name %} <small style="color:#7a6b55;">（{{ ing.chinese_name }}）</small>{% endif %}</td>
+                            <td>{{ ing.percentage }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">
+                    <p>B 没有独有成分。</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

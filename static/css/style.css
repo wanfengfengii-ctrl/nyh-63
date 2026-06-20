@@ -634,3 +634,447 @@ a:hover {
         gap: 10px;
     }
 }
+
+.safety-banner {
+    background: linear-gradient(135deg, #8b3a3a 0%, #b35c3a 100%);
+    color: #fff5e6;
+    padding: 14px 20px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-left: 5px solid #c9a227;
+    font-size: 14px;
+    box-shadow: 0 2px 6px rgba(139, 58, 58, 0.15);
+}
+
+.safety-banner .banner-icon {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.safety-banner .banner-text {
+    flex: 1;
+}
+
+.safety-banner .banner-close {
+    background: none;
+    border: none;
+    color: #fff5e6;
+    font-size: 18px;
+    cursor: pointer;
+    opacity: 0.8;
+}
+
+.safety-banner .banner-close:hover {
+    opacity: 1;
+}
+
+.role-chip {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid transparent;
+}
+
+.role-chip-admin {
+    background: #fde2e2;
+    color: #8b2c2c;
+    border-color: #e5c5c5;
+}
+
+.role-chip-curator {
+    background: #e8dcc8;
+    color: #5a4a32;
+    border-color: #d4c4a8;
+}
+
+.role-chip-researcher {
+    background: #dce8dc;
+    color: #2d5a2d;
+    border-color: #c5dcc5;
+}
+
+.role-chip-reviewer {
+    background: #d6e8ff;
+    color: #1a4e8a;
+    border-color: #c5d6f0;
+}
+
+.role-chip-auditor {
+    background: #f0e6d0;
+    color: #6b4423;
+    border-color: #e0d4ba;
+}
+
+.role-chip-guest {
+    background: #ebebeb;
+    color: #555;
+    border-color: #d5d5d5;
+}
+
+.nav-divider {
+    width: 1px;
+    height: 20px;
+    background: rgba(245, 230, 211, 0.35);
+    margin: 0 4px;
+}
+
+.timeline {
+    position: relative;
+    padding: 10px 0;
+    margin-left: 8px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #d4c4a8;
+}
+
+.timeline-item {
+    position: relative;
+    padding-left: 36px;
+    padding-bottom: 18px;
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #8b6914;
+    box-shadow: 0 0 0 3px #f8f6f1;
+}
+
+.timeline-item .timeline-time {
+    font-size: 12px;
+    color: #7a6b55;
+    margin-bottom: 4px;
+}
+
+.timeline-item .timeline-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #4a3728;
+    margin-bottom: 4px;
+}
+
+.timeline-item .timeline-meta {
+    font-size: 12px;
+    color: #7a6b55;
+}
+
+.timeline-item .timeline-comment {
+    font-size: 13px;
+    color: #5a4a32;
+    margin-top: 6px;
+    padding: 8px 12px;
+    background: #faf6ed;
+    border-radius: 4px;
+    border-left: 3px solid #c9a227;
+}
+
+.alert-box {
+    border-radius: 6px;
+    padding: 14px 16px;
+    border: 1px solid;
+    background: #fff;
+}
+
+.alert-box-critical {
+    background: #fdecec;
+    border-color: #e5c5c5;
+    border-left: 4px solid #b33a3a;
+}
+
+.alert-box-warning {
+    background: #fff8e1;
+    border-color: #f0e0a0;
+    border-left: 4px solid #c9a227;
+}
+
+.alert-box-info {
+    background: #eaf3fb;
+    border-color: #c5d6f0;
+    border-left: 4px solid #4a7fb3;
+}
+
+.alert-box .alert-box-level {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.alert-box-critical .alert-box-level {
+    color: #8b2c2c;
+}
+
+.alert-box-warning .alert-box-level {
+    color: #8a6d00;
+}
+
+.alert-box-info .alert-box-level {
+    color: #1a4e8a;
+}
+
+.alert-box .alert-box-count {
+    font-size: 22px;
+    font-weight: 700;
+    color: #4a3728;
+}
+
+.compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(74, 55, 40, 0.08);
+}
+
+.compare-table thead {
+    background: #f0e6d0;
+}
+
+.compare-table th,
+.compare-table td {
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 13px;
+    border-bottom: 1px solid #e8dfc8;
+}
+
+.compare-table th {
+    font-weight: 600;
+    color: #4a3728;
+    font-size: 12px;
+}
+
+.compare-table tbody tr:hover {
+    background: #faf6ed;
+}
+
+.compare-table .diff-positive {
+    color: #2d6a2d;
+    font-weight: 600;
+}
+
+.compare-table .diff-negative {
+    color: #a12828;
+    font-weight: 600;
+}
+
+.compare-table .diff-zero {
+    color: #7a6b55;
+}
+
+.compare-table .col-a {
+    background: #faf6ed;
+}
+
+.compare-table .col-b {
+    background: #f5efe0;
+}
+
+.risk-score {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 14px;
+    background: #fff;
+    border: 1px solid #e8dfc8;
+}
+
+.risk-score .score-value {
+    font-size: 20px;
+    min-width: 32px;
+    text-align: center;
+}
+
+.risk-score-low {
+    color: #2d6a2d;
+    border-color: #c5dcc5;
+    background: #eaf7ea;
+}
+
+.risk-score-medium {
+    color: #856404;
+    border-color: #f0e0a0;
+    background: #fff8e1;
+}
+
+.risk-score-high {
+    color: #a12828;
+    border-color: #e5c5c5;
+    background: #fdecec;
+}
+
+.risk-score .score-bar {
+    width: 60px;
+    height: 6px;
+    background: #eee;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.risk-score .score-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+}
+
+.risk-score-low .score-bar-fill {
+    background: linear-gradient(90deg, #4caf50, #81c784);
+}
+
+.risk-score-medium .score-bar-fill {
+    background: linear-gradient(90deg, #ffb74d, #ffc107);
+}
+
+.risk-score-high .score-bar-fill {
+    background: linear-gradient(90deg, #e57373, #e53935);
+}
+
+.stat-horizontal {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0e6d0;
+}
+
+.stat-horizontal:last-child {
+    border-bottom: none;
+}
+
+.stat-horizontal .stat-label {
+    width: 100px;
+    flex-shrink: 0;
+    font-size: 13px;
+    color: #4a3728;
+    font-weight: 500;
+}
+
+.stat-horizontal .stat-bar-wrap {
+    flex: 1;
+    height: 22px;
+    background: #f5efe0;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.stat-horizontal .stat-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8b6914, #c9a227);
+    border-radius: 4px;
+    transition: width 0.3s;
+}
+
+.stat-horizontal .stat-value {
+    width: 60px;
+    flex-shrink: 0;
+    text-align: right;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b4423;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.dashboard-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 6px rgba(74, 55, 40, 0.08);
+    border: 1px solid #e8dfc8;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.dashboard-card:hover {
+    box-shadow: 0 4px 12px rgba(74, 55, 40, 0.12);
+    transform: translateY(-1px);
+}
+
+.dashboard-card .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.dashboard-card .card-title {
+    font-size: 13px;
+    color: #7a6b55;
+    font-weight: 500;
+}
+
+.dashboard-card .card-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    background: #f0e6d0;
+    color: #6b4423;
+}
+
+.dashboard-card .card-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #4a3728;
+    margin-bottom: 4px;
+}
+
+.dashboard-card .card-sub {
+    font-size: 12px;
+    color: #7a6b55;
+}
+
+.dashboard-card .card-trend {
+    display: inline-block;
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.dashboard-card .card-trend-up {
+    background: #eaf7ea;
+    color: #2d6a2d;
+}
+
+.dashboard-card .card-trend-down {
+    background: #fdecec;
+    color: #a12828;
+}
+
+.dashboard-card .card-trend-flat {
+    background: #f5efe0;
+    color: #7a6b55;
+}

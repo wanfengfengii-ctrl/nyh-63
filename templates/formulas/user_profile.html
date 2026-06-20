@@ -1,0 +1,94 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}个人资料 - 历史火药配方文献管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>个人资料</h2>
+    <p>查看和更新您的个人账户信息</p>
+</div>
+
+<div class="two-col">
+    <div>
+        <div class="detail-card">
+            <div class="detail-header">
+                <h2>基本信息</h2>
+                <div class="meta">账号创建于 {{ profile.created_at|date:"Y-m-d" }}</div>
+            </div>
+            <div class="detail-body">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <span class="label">用户名</span>
+                        <span class="value"><strong>{{ user.username }}</strong></span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="label">系统角色</span>
+                        <span class="value">
+                            <span class="role-chip role-{{ profile.role }}">{{ role_label }}</span>
+                        </span>
+                    </div>
+                    {% if user.email %}
+                    <div class="detail-item">
+                        <span class="label">电子邮箱</span>
+                        <span class="value">{{ user.email }}</span>
+                    </div>
+                    {% endif %}
+                    {% if user.first_name or user.last_name %}
+                    <div class="detail-item">
+                        <span class="label">姓名</span>
+                        <span class="value">{{ user.first_name }}{{ user.last_name }}</span>
+                    </div>
+                    {% endif %}
+                    {% if profile.department %}
+                    <div class="detail-item">
+                        <span class="label">所属部门/团队</span>
+                        <span class="value">{{ profile.department }}</span>
+                    </div>
+                    {% endif %}
+                    {% if profile.phone %}
+                    <div class="detail-item">
+                        <span class="label">联系电话</span>
+                        <span class="value">{{ profile.phone }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="detail-item">
+                        <span class="label">资料更新时间</span>
+                        <span class="value">{{ profile.updated_at|date:"Y-m-d H:i" }}</span>
+                    </div>
+                </div>
+                {% if profile.bio %}
+                <div class="detail-section">
+                    <h3>个人简介</h3>
+                    <p style="font-size:14px; color:#555; line-height:1.7;">{{ profile.bio|linebreaks }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <div class="form-card">
+            <h3 style="font-size:18px; color:#4a3728; margin-bottom:20px; padding-bottom:12px; border-bottom:2px solid #d4c4a8;">编辑个人资料</h3>
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-grid">
+                    {% for field in form %}
+                    <div class="form-group {% if field.name == 'bio' %}full-width{% endif %}">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.errors %}
+                        <div style="color:#a12828; font-size:12px; margin-top:4px;">
+                            {% for error in field.errors %}{{ error }}{% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">保存修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

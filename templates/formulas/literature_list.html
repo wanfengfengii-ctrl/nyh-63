@@ -8,6 +8,21 @@
     <p>记录所有配方引用的历史文献和档案资料</p>
 </div>
 
+<form class="filter-form" method="get">
+    <div class="filter-grid">
+        {% for field in form %}
+        <div class="form-group">
+            {{ field.label_tag }}
+            {{ field }}
+        </div>
+        {% endfor %}
+    </div>
+    <div style="display:flex; gap:10px;">
+        <button type="submit" class="btn btn-primary">筛选</button>
+        <a href="{% url 'formulas:literature_list' %}" class="btn btn-secondary">重置</a>
+    </div>
+</form>
+
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
     <p style="color:#7a6b55; font-size:14px;">共 <strong>{{ literatures|length }}</strong> 条文献记录</p>
     {% if user.is_authenticated %}
@@ -26,6 +41,7 @@
             <th>来源地区</th>
             <th>类型</th>
             <th>配方数</th>
+            <th>附件数</th>
             <th>操作</th>
         </tr>
     </thead>
@@ -39,6 +55,7 @@
             <td>{{ lit.region|default:"-" }}</td>
             <td>{{ lit.get_source_type_display }}</td>
             <td>{{ lit.formulas.count }}</td>
+            <td>{{ lit.attachments.count }}</td>
             <td><a href="{% url 'formulas:literature_detail' lit.pk %}" class="btn btn-sm btn-secondary">查看</a></td>
         </tr>
         {% endfor %}

@@ -1,7 +1,11 @@
 from django.contrib import admin
 from django import forms
 from django.core.exceptions import ValidationError
-from .models import Literature, Formula, Ingredient, SafetyReview
+from .models import (
+    Literature, Formula, Ingredient, SafetyReview,
+    UserProfile, OperationLog, FormulaVersion,
+    LiteratureAttachment, RiskAlert, ReviewFlow,
+)
 
 
 class IngredientInline(admin.TabularInline):
@@ -17,12 +21,53 @@ class SafetyReviewInline(admin.TabularInline):
     readonly_fields = ['reviewed_at']
 
 
+class LiteratureAttachmentInline(admin.TabularInline):
+    model = LiteratureAttachment
+    extra = 1
+    fields = ['file', 'file_name', 'file_type', 'description', 'page_reference', 'uploaded_by', 'uploaded_at']
+    readonly_fields = ['uploaded_at']
+
+
+class FormulaVersionInline(admin.TabularInline):
+    model = FormulaVersion
+    extra = 0
+    fields = ['version', 'name', 'safety_level', 'created_by', 'created_at', 'change_note']
+    readonly_fields = ['version', 'name', 'safety_level', 'created_by', 'created_at', 'ingredients_json']
+    can_delete = False
+
+
+class ReviewFlowInline(admin.TabularInline):
+    model = ReviewFlow
+    extra = 0
+    fields = ['step', 'operator', 'from_status', 'to_status', 'created_at']
+    readonly_fields = ['step', 'operator', 'from_status', 'to_status', 'created_at', 'comment']
+    can_delete = False
+
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ['user', 'role', 'department', 'phone', 'created_at']
+    list_filter = ['role', 'department']
+    search_fields = ['user__username', 'user__email', 'department', 'phone']
+    autocomplete_fields = ['user']
+
+
 @admin.register(Literature)
 class LiteratureAdmin(admin.ModelAdmin):
-    list_display = ['title', 'author', 'publication_year', 'dynasty', 'region', 'source_type']
+    list_display = ['title', 'author', 'publication_year', 'dynasty', 'region', 'source_type', 'created_by']
     list_filter = ['source_type', 'dynasty', 'region']
     search_fields = ['title', 'author', 'call_number']
     ordering = ['-publication_year']
+    inlines = [LiteratureAttachmentInline]
+    readonly_fields = ['created_at', 'updated_at']
+
+
+@admin.register(LiteratureAttachment)
+class LiteratureAttachmentAdmin(admin.ModelAdmin):
+    list_display = ['literature', 'file_name', 'file_type', 'page_reference', 'uploaded_by', 'uploaded_at']
+    list_filter = ['file_type', 'uploaded_at']
+    search_fields = ['literature__title', 'file_name', 'description']
+    readonly_fields = ['uploaded_at']
 
 
 class FormulaAdminForm(forms.ModelForm):
@@ -38,17 +83,18 @@ class FormulaAdminForm(forms.ModelForm):
 @admin.register(Formula)
 class FormulaAdmin(admin.ModelAdmin):
     form = FormulaAdminForm
-    inlines = [IngredientInline, SafetyReviewInline]
+    inlines = [IngredientInline, SafetyReviewInline, FormulaVersionInline, ReviewFlowInline]
     list_display = [
         'formula_no', 'name', 'era', 'region', 'usage_category',
-        'safety_level', 'review_status', 'archive_status', 'created_at',
+        'safety_level', 'review_status', 'archive_status', 'version',
+        'risk_score_display', 'created_by', 'created_at',
     ]
-    list_filter = ['safety_level', 'review_status', 'archive_status', 'usage_category']
+    list_filter = ['safety_level', 'review_status', 'archive_status', 'usage_category', 'version']
     search_fields = ['formula_no', 'name', 'alias', 'region', 'era']
-    readonly_fields = ['created_at', 'updated_at']
+    readonly_fields = ['created_at', 'updated_at', 'version']
     fieldsets = [
         ('基本信息', {
-            'fields': ['formula_no', 'name', 'alias', 'created_by']
+            'fields': ['formula_no', 'name', 'alias', 'created_by', 'updated_by', 'version']
         }),
         ('文献出处', {
             'fields': ['literature', 'literature_page']
@@ -64,6 +110,13 @@ class FormulaAdmin(admin.ModelAdmin):
             'classes': ['collapse']
         }),
     ]
+
+    def risk_score_display(self, obj):
+        score = obj.risk_score
+        color = 'green' if score < 30 else ('orange' if score < 60 else 'red')
+        return f'<span style="color:{color};font-weight:bold;">{score}</span>'
+    risk_score_display.short_description = '风险分值'
+    risk_score_display.allow_tags = True
 
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
@@ -83,8 +136,63 @@ class IngredientAdmin(admin.ModelAdmin):
     search_fields = ['name', 'chinese_name']
 
 
+@admin.register(FormulaVersion)
+class FormulaVersionAdmin(admin.ModelAdmin):
+    list_display = ['formula', 'version', 'name', 'safety_level', 'created_by', 'created_at']
+    list_filter = ['safety_level', 'created_at']
+    search_fields = ['formula__formula_no', 'formula__name', 'name', 'change_note']
+    readonly_fields = ['formula', 'version', 'name', 'alias', 'description', 'safety_level',
+                       'safety_note', 'ingredients_json', 'created_by', 'created_at']
+
+
 @admin.register(SafetyReview)
 class SafetyReviewAdmin(admin.ModelAdmin):
     list_display = ['formula', 'reviewer', 'review_result', 'reviewed_at']
     list_filter = ['review_result', 'reviewed_at']
     search_fields = ['formula__formula_no', 'formula__name', 'opinion']
+    readonly_fields = ['reviewed_at']
+
+
+@admin.register(ReviewFlow)
+class ReviewFlowAdmin(admin.ModelAdmin):
+    list_display = ['formula', 'step', 'operator', 'from_status', 'to_status', 'created_at']
+    list_filter = ['step', 'created_at']
+    search_fields = ['formula__formula_no', 'formula__name', 'comment']
+    readonly_fields = ['formula', 'step', 'operator', 'from_status', 'to_status', 'comment', 'created_at']
+
+
+@admin.register(OperationLog)
+class OperationLogAdmin(admin.ModelAdmin):
+    list_display = ['created_at', 'user', 'operation_type', 'target_model', 'target_name', 'ip_address']
+    list_filter = ['operation_type', 'target_model', 'created_at']
+    search_fields = ['user__username', 'target_name', 'target_id', 'description', 'ip_address']
+    readonly_fields = ['user', 'operation_type', 'target_model', 'target_id', 'target_name',
+                       'description', 'old_value', 'new_value', 'ip_address', 'user_agent', 'created_at']
+    date_hierarchy = 'created_at'
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(RiskAlert)
+class RiskAlertAdmin(admin.ModelAdmin):
+    list_display = ['created_at', 'level', 'alert_type', 'title', 'formula', 'status', 'risk_score']
+    list_filter = ['level', 'alert_type', 'status', 'created_at']
+    search_fields = ['title', 'message', 'handle_note']
+    readonly_fields = ['formula', 'alert_type', 'level', 'title', 'message', 'risk_score',
+                       'triggered_by', 'created_at']
+    date_hierarchy = 'created_at'
+    fieldsets = [
+        ('预警信息', {
+            'fields': ['level', 'alert_type', 'title', 'message', 'risk_score', 'formula', 'triggered_by', 'created_at']
+        }),
+        ('处理信息', {
+            'fields': ['status', 'handled_by', 'handled_at', 'handle_note']
+        }),
+    ]

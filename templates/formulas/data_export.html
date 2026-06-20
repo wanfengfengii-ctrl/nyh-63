@@ -1,0 +1,52 @@
+{% extends "formulas/base.html" %}
+
+{% block title %}数据导出 - 历史火药配方文献管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>数据导出</h2>
+    <p>选择需要导出的数据内容、格式及时间范围，导出为 CSV 或 JSON 文件</p>
+</div>
+
+<div class="form-card">
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-grid">
+            {% for field in form %}
+                {% if field.name == 'include_attachments' %}
+                <div class="form-group full-width" style="display:flex; align-items:center; gap:10px;">
+                    {{ field }}
+                    <label for="{{ field.id_for_label }}" style="margin:0; font-weight:normal;">{{ field.label }}</label>
+                </div>
+                {% else %}
+                <div class="form-group {% if field.name == 'date_from' or field.name == 'date_to' %}{% else %}full-width{% endif %}">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {% if field.help_text %}
+                    <small style="color:#7a6b55; font-size:12px;">{{ field.help_text }}</small>
+                    {% endif %}
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">开始导出</button>
+        </div>
+    </form>
+</div>
+
+<div class="section-title">导出说明</div>
+<div class="detail-card" style="padding:20px;">
+    <div style="font-size:13px; color:#555; line-height:1.8;">
+        <p><strong>配方数据（含成分）：</strong>导出配方完整信息，包含所有成分及其比例数据。</p>
+        <p><strong>配方数据（基本信息）：</strong>仅导出配方编号、名称、年代、用途分类、安全等级等基础信息。</p>
+        <p><strong>文献数据：</strong>导出文献来源的标题、作者、出版信息等，可选择是否包含附件信息。</p>
+        <p><strong>成分统计数据：</strong>导出所有配方中出现的成分名称、古称、占比及所属配方。</p>
+        <p><strong>评审记录：</strong>导出安全评审的评审人、评审结果、意见及风险分析。</p>
+        <p><strong>操作日志（仅管理员/审计员）：</strong>导出系统操作审计日志，包含用户、操作类型、时间及 IP 地址。</p>
+        {% if not can_export_logs %}
+        <p style="color:#a12828; margin-top:10px;"><strong>注意：</strong>您当前没有导出操作日志的权限。</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
